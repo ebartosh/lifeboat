@@ -1,0 +1,19 @@
+{
+  "protocol": "ore",
+  "displayName": "ORE",
+  "verified": true,
+  "actions": [
+    {
+      "id": "claim-sol",
+      "label": "Claim SOL",
+      "description": "Claim SOL rewards from your ORE miner position",
+      "instruction": "claimSol"
+    },
+    {
+      "id": "claim-ore",
+      "label": "Claim ORE",
+      "description": "Claim all ORE mining rewards after refining fees",
+      "instruction": "claimOre"
+    }
+  ]
+}

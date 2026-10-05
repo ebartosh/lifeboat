@@ -1,0 +1,157 @@
+﻿import { build } from 'esbuild';
+import { chromium } from 'playwright-core';
+import { createServer } from 'node:http';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+
+const root = process.cwd();
+const output = path.join(root, '.cache/interface-check');
+await mkdir(output, { recursive: true });
+await build({ entryPoints: ['tests/ui/preview.jsx'], outfile: path.join(output, 'preview.js'), bundle: true,
+  platform: 'browser', format: 'iife', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"development"',
+    'process.env.EXPO_PUBLIC_LIFEBOAT_TEST_RPC':'undefined', __DEV__: 'true' },
+  loader: { '.ttf': 'dataurl' }, resolveExtensions: ['.web.tsx','.web.ts','.web.js','.tsx','.ts','.jsx','.js','.json'],
+  plugins: [{ name: 'isolated-native-preview', setup(builder) {
+    builder.onResolve({ filter: /^react-native$/ }, () => ({ path: path.join(root, 'tests/ui/native-web.jsx') }));
+    builder.onResolve({ filter: /\/native-storage$/ }, () => ({ path: path.join(root, 'tests/ui/storage.js') }));
+    builder.onResolve({ filter: /^expo-(font|clipboard)$/ }, args => ({ path: args.path, namespace: 'preview' }));
+    builder.onLoad({ filter: /.*/, namespace: 'preview' }, args => ({ contents: args.path === 'expo-font'
+      ? 'export const useFonts = () => [true, null];'
+      : 'export const setStringAsync = async value => { window.copied = value; };' }));
+  } }],
+});
+const faces = ['Mono-Regular','Mono-Medium','Serif-Regular','Serif-Medium'].map(name =>
+  `@font-face{font-family:IBMPlex${name};src:url(/fonts/IBMPlex${name}.ttf)}`).join('');
+const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${faces}html,body,#root{height:100%;margin:0}#root{display:flex;flex-direction:column}*{box-sizing:border-box}</style><div id="root"></div><script src="/preview.js"></script></html>`;
+const server = createServer(async (req, res) => {
+  try {
+    if (req.url?.startsWith('/fonts/')) {
+      res.setHeader('content-type','font/ttf'); res.end(await readFile(path.join(root,'assets/fonts',path.basename(req.url))));
+    } else if (req.url === '/preview.js') {
+      res.setHeader('content-type','text/javascript; charset=utf-8'); res.end(await readFile(path.join(output,'preview.js')));
+    } else { res.setHeader('content-type','text/html; charset=utf-8'); res.end(html); }
+  } catch { res.statusCode = 404; res.end(); }
+});
+await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const port = server.address().port;
+const executablePath = process.env.INTERFACE_BROWSER || [
+  'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  '/usr/bin/chromium', '/usr/bin/google-chrome',
+].find(existsSync);
+let browser;
+const results = [];
+try {
+  browser = await chromium.launch({ executablePath, headless: true });
+  const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  async function open(scenario, scale = 1, width = 360, height = 800) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`http://127.0.0.1:${port}/?scenario=${scenario}&scale=${scale}`);
+    try { await page.getByText('Lifeboat', { exact: true }).first().waitFor(); }
+    catch (error) {
+      await page.screenshot({path:path.join(output,`failure-${scenario}-${scale}.png`),fullPage:true}).catch(()=>{});
+      throw new Error(`${scenario} at ${scale}× failed to render; browser errors: ${JSON.stringify(errors)}`,{cause:error});
+    }
+    await page.evaluate(() => document.fonts.ready);
+  }
+  async function check(name) {
+    const issues = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(el => {
+      const b = el.getBoundingClientRect();
+      return b.width > 0 && b.height > 0 && (b.left < -1 || b.right > innerWidth + 1);
+    }).map(el => ({ text: el.textContent?.slice(0,60), width: el.getBoundingClientRect().width })));
+    assert.deepEqual(issues, [], `${name}: horizontal overflow`);
+    const small = await page.locator('[role="button"], [role="tab"], input').evaluateAll(els => els.filter(el => {
+      const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && (b.width < 48 || b.height < 48);
+    }).map(el => el.textContent));
+    assert.deepEqual(small, [], `${name}: targets under 48px`);
+    await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
+    results.push(name);
+  }
+  for (const scale of [1,1.3,2]) {
+    for (const scenario of ['no-wallet','ore','loading','empty','error','kamino','review','unknown','meteora','meteora-loading','meteora-empty','meteora-error','meteora-review','meteora-partial','meteora-unknown']) {
+      await open(scenario, scale); await check(`${scenario}-360-${scale}`);
+    }
+  }
+  await open('ore',1,900); await check('ore-wide');
+  await open('ore',2,900); await check('ore-wide-2');
+  await open('meteora',1,900); await check('meteora-wide');
+  await open('meteora',2,900); await check('meteora-wide-2');
+  await open('meteora');
+  await page.getByRole('button',{name:/USDC \/ WSOL\. DLMM/}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),[],'Meteora selection must not submit');
+  await page.getByRole('button',{name:'Reverse order',exact:true}).click();
+  assert.match(await page.getByRole('button',{name:/USDC \/ WSOL\. DLMM/}).textContent(),/^> USDC/);
+  await page.getByRole('button',{name:'Full details',exact:true}).click();
+  await page.getByRole('button',{name:'Copy: Position',exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.copied),'7YttLkHDoNj9wyDur5H7Myd5FWGaBMPLys5aeQ3dJKXS');
+  await check('meteora-details');
+  await page.getByRole('button',{name:'Back',exact:true}).click();
+  await page.getByRole('button',{name:/Unavailable position\. DLMM/}).click();
+  assert.equal(await page.getByRole('button',{name:'Withdraw all',exact:true}).isDisabled(),true);
+  await page.getByRole('button',{name:/USDC \/ WSOL\. DLMM/}).click();
+  await page.getByRole('button',{name:'Withdraw all',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['7YttLkHDoNj9wyDur5H7Myd5FWGaBMPLys5aeQ3dJKXS']);
+  await open('meteora-partial',2);
+  await page.getByRole('button',{name:'Resume withdrawal',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['resume']);
+  await check('meteora-resume-2');
+  await open('meteora-review',2);
+  await page.getByRole('button',{name:'Sign and send',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),[true]);
+  await check('meteora-sending-2');
+  await open('meteora-unknown');
+  assert.equal(await page.getByRole('button',{name:'Resume withdrawal',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Check status',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['check']);
+  await open('no-wallet');
+  await page.getByRole('button', { name: 'Fonts and license', exact: true }).click();
+  await page.getByText(/Copyright.*IBM Corp/).waitFor();
+  await check('font-license');
+  await open('ore');
+  await page.getByRole('button', { name: 'ORE rewards. Rewards.' }).click();
+  assert.deepEqual(await page.evaluate(() => window.calls), [], 'Selection must not run an operation');
+  await page.getByRole('button', { name: 'Full details', exact: true }).click();
+  await page.getByRole('button', { name: 'Copy: Miner', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.copied), '7YttLkHDoNj9wyDur5H7Myd5FWGaBMPLys5aeQ3dJKXS');
+  await check('ore-details');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByRole('button', { name: 'Direct staking. ORE staking.' }).click();
+  await page.getByRole('button', { name: 'Withdraw ORE', exact: true }).click();
+  await page.getByLabel('Withdrawal amount, ORE', { exact: true }).fill('0.00000000001');
+  await page.setViewportSize({ width: 360, height: 400 });
+  await check('ore-input-low-screen');
+  await page.getByRole('button', { name: 'Prepare ORE withdrawal', exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => window.calls), ['0.00000000001']);
+  await open('kamino');
+  await page.getByRole('button', { name: /Debt SOL\. Recheck/ }).click();
+  await page.getByRole('button', { name: 'Reverse order', exact: true }).click();
+  assert.match(await page.getByRole('button', { name: /Debt SOL\. Recheck/ }).textContent(), /^> Debt SOL/);
+  await page.getByRole('button', { name: 'Repay SOL', exact: true }).click();
+  await page.getByLabel('Amount, SOL', { exact: true }).fill('0');
+  await page.getByRole('button', { name: 'Prepare operation', exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => window.calls), []);
+  await page.getByText(/Error: Enter a positive/).waitFor();
+  await page.getByLabel('Amount, SOL', { exact: true }).fill('all');
+  await check('kamino-input');
+  await page.getByRole('button', { name: 'Prepare operation', exact: true }).click();
+  const requests = await page.evaluate(() => window.calls);
+  assert.equal(requests[0].token, 'SOL'); assert.equal(requests[0].amount, 'all');
+  await open('review',2);
+  await page.getByRole('button', { name: 'Sign and send', exact: true }).scrollIntoViewIfNeeded();
+  await check('review-actions-2');
+  await page.getByRole('button', { name: 'Sign and send', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Sign and send', exact: true }).count(), 0);
+  await check('sending-2');
+  await open('unknown');
+  await page.getByRole('button', { name: 'Check status', exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => window.calls), ['check']);
+  assert.equal(await page.getByRole('button', { name: 'Check status', exact: true }).count(), 0);
+  assert.deepEqual(errors, [], 'Browser runtime errors');
+  await writeFile(path.join(output,'report.json'),JSON.stringify({ checks: results, errors, note: 'RN Web preview. Text metrics emulate fontScale; native Android behavior requires device QA.' },null,2));
+  console.log(`Passed ${results.length} visual/layout cases and interaction checks. Artifacts: ${output}`);
+} finally { await browser?.close(); server.close(); }
+

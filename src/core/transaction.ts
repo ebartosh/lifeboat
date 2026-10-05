@@ -1,0 +1,243 @@
+import {
+  appendTransactionMessageInstructions,
+  getTransactionEncoder,
+  getTransactionDecoder,
+  compileTransaction,
+  createTransactionMessage,
+  pipe,
+  setTransactionMessageFeePayer,
+  setTransactionMessageLifetimeUsingBlockhash,
+  signTransaction,
+  partiallySignTransaction,
+  getSignatureFromTransaction,
+  type Instruction,
+  type Address,
+  type KeyPairSigner,
+  type Signature,
+  type Transaction,
+} from "@solana/kit";
+
+import { errorMessage, SimulationError, TransactionError } from "./errors";
+import type { SimulationResult, TransactionRpc } from "./rpc";
+import { startTransactionTrace } from './transaction-diagnostics';
+import { checkSignedTransaction } from './signed-transaction';
+
+export type SafeTransactionResult =
+  | { status: "cancelled" }
+  | { status: "confirmed"; signature: Signature; slot?: bigint };
+
+export type SafeTransactionOptions = {
+  rpc: TransactionRpc;
+  wallet: Address;
+  getSigner?: () => Promise<KeyPairSigner>;
+  signWithWallet?: (unsigned: Transaction) => Promise<Transaction>;
+  additionalSigners?: readonly KeyPairSigner[];
+  instruction?: Instruction;
+  instructions?: readonly Instruction[];
+  simulationAccounts?: readonly Address[];
+  validateSimulation?: (simulation: SimulationResult) => void | Promise<void>;
+  beforeSimulation?: (transaction: Transaction) => Promise<void>;
+  confirm: (review: TransactionReview) => Promise<boolean>;
+  onSimulated?: (review: TransactionReview) => void;
+  assertActive?: () => void;
+  beforeSend?: (transaction: PendingTransactionIdentity) => Promise<void>;
+  pollIntervalMs?: number;
+  timeoutMs?: number;
+  sleep?: (milliseconds: number) => Promise<void>;
+  now?: () => number;
+};
+
+export type PendingTransactionIdentity = {
+  signature: Signature;
+  wallet: Address;
+  blockhash: string;
+  lastValidBlockHeight: bigint;
+};
+
+export class OnChainFailure extends TransactionError {}
+export class NotSentError extends TransactionError {}
+
+export type TransactionReview = {
+  wallet: Address;
+  simulation: SimulationResult;
+  feeLamports: bigint | null;
+  lastValidBlockHeight: bigint;
+};
+
+function copyTransaction(transaction: Transaction): Transaction {
+  return { ...transaction, ...getTransactionDecoder().decode(getTransactionEncoder().encode(transaction)) };
+}
+
+function describeRpcValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+export async function executeSafeTransaction(options: SafeTransactionOptions): Promise<SafeTransactionResult> {
+  const trace = startTransactionTrace();
+  try { return await executeTracedTransaction(options, trace); }
+  catch (error) { trace.failure(error); throw error; }
+}
+
+async function executeTracedTransaction(options: SafeTransactionOptions, trace: ReturnType<typeof startTransactionTrace>): Promise<SafeTransactionResult> {
+  // Capture execution context before yielding to caller callbacks.
+  const { rpc, wallet, getSigner, signWithWallet, confirm } = options;
+  const additionalSigners = options.additionalSigners ?? [];
+  const assertActive = options.assertActive ?? (() => {});
+  assertActive();
+  if ((getSigner === undefined) === (signWithWallet === undefined)) {
+    throw new TransactionError('Supply exactly one signing method');
+  }
+  if ((options.instruction === undefined) === (options.instructions === undefined)) {
+    throw new TransactionError("Supply exactly one instruction or one instruction list");
+  }
+  // Detach the message from caller-owned buffers before simulation/confirmation callbacks.
+  const instructions = (options.instructions ?? [options.instruction!]).map(instruction => ({
+    ...instruction,
+    ...(instruction.data === undefined ? {} : { data: Uint8Array.from(instruction.data) }),
+    ...(instruction.accounts === undefined ? {} : { accounts: instruction.accounts.map(account => ({ ...account })) }),
+  }));
+  if (instructions.length === 0) throw new TransactionError("Cannot execute an empty transaction");
+  const expectedSigners = [wallet, ...additionalSigners.map(signer => signer.address)];
+  if (new Set(expectedSigners).size !== expectedSigners.length) throw new TransactionError('Duplicate transaction signer');
+  trace.event('blockhash-start');
+  const blockhash = { ...await rpc.getLatestBlockhash() };
+  trace.event('message-build');
+  const transactionMessage = pipe(
+    createTransactionMessage({ version: "legacy" }),
+    message => setTransactionMessageFeePayer(wallet, message),
+    message => setTransactionMessageLifetimeUsingBlockhash(blockhash, message),
+    message => appendTransactionMessageInstructions(instructions, message),
+  );
+
+  const unsignedTransaction = compileTransaction(transactionMessage);
+  trace.messageShape('original', unsignedTransaction);
+  if (Object.keys(unsignedTransaction.signatures).length !== expectedSigners.length ||
+      expectedSigners.some(signer => !(signer in unsignedTransaction.signatures))) {
+    throw new TransactionError('Transaction signers differ from the configured wallet and temporary signers');
+  }
+  if (getTransactionEncoder().encode(unsignedTransaction).length > 1232) {
+    throw new TransactionError("Transaction exceeds Solana's 1232-byte limit; this position is not supported without lookup tables");
+  }
+  let simulation;
+  trace.event('simulation-start');
+  await options.beforeSimulation?.(copyTransaction(unsignedTransaction));
+  try {
+    simulation = await rpc.simulateTransaction(copyTransaction(unsignedTransaction), options.simulationAccounts);
+  } catch (error) {
+    throw new SimulationError(`Transaction simulation RPC request failed: ${errorMessage(error)}`, { cause: error });
+  }
+  if (simulation.error !== null) {
+    trace.programError(simulation.error);
+    const logSuffix = simulation.logs.length === 0 ? "" : `\n${simulation.logs.join("\n")}`;
+    throw new SimulationError(
+      `Transaction simulation failed: ${describeRpcValue(simulation.error)}${logSuffix}`,
+    );
+  }
+  trace.event('simulation-validation');
+  await options.validateSimulation?.(simulation);
+  trace.event('fee-read');
+  const review: TransactionReview = { wallet, simulation,
+    feeLamports: await rpc.getTransactionFee?.(copyTransaction(unsignedTransaction)) ?? null,
+    lastValidBlockHeight: blockhash.lastValidBlockHeight };
+  options.onSimulated?.(review);
+  assertActive();
+
+  trace.event('review-wait');
+  if (!(await confirm(review))) {
+    trace.event('cancelled');
+    return { status: "cancelled" };
+  }
+  assertActive();
+
+  trace.event('review-approved');
+  trace.event('pre-sign-height');
+  const currentBlockHeight = await rpc.getBlockHeight();
+  if (currentBlockHeight > blockhash.lastValidBlockHeight) {
+    throw new TransactionError("The simulated transaction blockhash expired before signing; prepare and confirm again");
+  }
+
+  let signedTransaction;
+  trace.event('signing-start');
+  try {
+    assertActive();
+    if (getSigner) {
+      const signer = await getSigner();
+      assertActive();
+      if (signer.address !== wallet) throw new TransactionError('Signing wallet changed; prepare and confirm again');
+      signedTransaction = await signTransaction([signer.keyPair, ...additionalSigners.map(extra => extra.keyPair)], unsignedTransaction);
+    } else {
+      const partlySigned = additionalSigners.length
+        ? await partiallySignTransaction(additionalSigners.map(extra => extra.keyPair), unsignedTransaction)
+        : copyTransaction(unsignedTransaction);
+      signedTransaction = await signWithWallet!(copyTransaction(partlySigned));
+      assertActive();
+    }
+  } catch (error) {
+    throw new TransactionError(`Transaction signing failed: ${errorMessage(error)}`, { cause: error });
+  }
+  trace.event('signing-result');
+  trace.event('signature-validation');
+  if (signedTransaction) trace.messageShape('returned', signedTransaction);
+  const signatureFailure = await checkSignedTransaction(unsignedTransaction, signedTransaction, expectedSigners);
+  if (signatureFailure) {
+    trace.signatureRejected(signatureFailure);
+    throw new TransactionError(`Signed transaction message or signature is invalid (${signatureFailure})`);
+  }
+  trace.event('post-sign-height');
+  if (await rpc.getBlockHeight() > blockhash.lastValidBlockHeight) {
+    throw new TransactionError('The simulated transaction blockhash expired before sending; prepare and confirm again');
+  }
+  assertActive();
+  const signature = getSignatureFromTransaction(signedTransaction);
+  try {
+    trace.event('pending-save');
+    await options.beforeSend?.({ signature, wallet, blockhash: blockhash.blockhash,
+      lastValidBlockHeight: blockhash.lastValidBlockHeight });
+    assertActive();
+    trace.event('pre-send-height');
+    if (await rpc.getBlockHeight() > blockhash.lastValidBlockHeight) {
+      throw new TransactionError('The simulated transaction blockhash expired before sending; prepare and confirm again');
+    }
+    assertActive();
+  } catch (error) {
+    // This process knows sendTransaction has not been called. After a crash the saved
+    // identity remains conservative/unknown, because that fact cannot be recovered.
+    throw new NotSentError('Transaction was not sent; prepare and confirm again', { cause: error });
+  }
+  trace.event('send-start');
+  if (await rpc.sendTransaction(signedTransaction) !== signature) {
+    throw new TransactionError('RPC returned a different transaction signature');
+  }
+  trace.event('send-result');
+
+  const pollIntervalMs = options.pollIntervalMs ?? 1_000;
+  const timeoutMs = options.timeoutMs ?? 90_000;
+  const sleep = options.sleep ?? (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
+  const now = options.now ?? Date.now;
+  trace.event('confirmation-start');
+  const deadline = now() + timeoutMs;
+  while (now() <= deadline) {
+    assertActive();
+    const status = await rpc.getSignatureStatus(signature);
+    if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+      if (status.error !== null) {
+        trace.programError(status.error);
+        throw new OnChainFailure('Transaction failed on-chain');
+      }
+      trace.event('confirmed');
+      return { status: "confirmed", signature, ...(status.slot === undefined ? {} : { slot: status.slot }) };
+    }
+    if ((await rpc.getBlockHeight()) > blockhash.lastValidBlockHeight) {
+      throw new TransactionError(`Transaction ${signature} expired before confirmation`);
+    }
+    if (now() >= deadline) break;
+    await sleep(pollIntervalMs);
+  }
+
+  throw new TransactionError(`Timed out waiting for transaction ${signature} to confirm`);
+}

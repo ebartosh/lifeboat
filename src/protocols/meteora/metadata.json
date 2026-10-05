@@ -1,0 +1,10 @@
+{
+  "programId": "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
+  "idlVersion": "0.12.0",
+  "sdkVersion": "1.9.14",
+  "sourceCommit": "576919e3e4368e542c402f000b4264724f7f23ec",
+  "sourceRepository": "https://github.com/MeteoraAg/dlmm-sdk",
+  "idlPath": "ts-client/src/dlmm/idl/idl.json",
+  "idlSha256": "045c0f4af044be046b6a14b350077e4242e8ac026b64a855803dab30fcdd8b35",
+  "network": "mainnet-beta"
+}

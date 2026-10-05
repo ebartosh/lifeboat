@@ -1,0 +1,23 @@
+# Wallets and RPC
+
+1. Install the APK on Android 7 (API 24) or later. API 24 is the minimum declared in the manifest; startup has so far been verified on an API 37.2 emulator.
+2. Import an existing 64-byte Solana JSON keypair or connect an installed Android wallet compatible with Mobile Wallet Adapter (MWA).
+3. Lifeboat connects to Solana mainnet-beta through the public endpoint `https://api.mainnet.solana.com`. No API key or RPC selection is needed in the app yet.
+
+A local keypair is stored **unencrypted** in the app's private directory. You can replace or delete it; the original JSON file is not changed. Connecting an external wallet removes the local copy. The external wallet retains its private key; the app saves its address and MWA authorization token for reconnection. “Disconnect wallet” deletes the local authorization. The app saves the RPC URL for submitted transactions with uncertain status, so status checks use the original endpoint. The MWA token is also stored on the device. Do not share an APK containing user data or use a public test keypair for funds.
+
+MWA uses `solana:mainnet`. The external wallet must support `signTransactions`; `signAndSendTransactions` is not used. If authorization expires, the app requests access again and checks that the address has not changed. Compatibility depends on the wallet implementation and should be checked on the device.
+
+The wallet must return the exact message Lifeboat simulated and showed for approval. On October 5, 2026, a Claim ORE test through Solflare 2.29.1 returned an expanded transaction (1 instruction became 5, including 2 added Compute Budget instructions). Lifeboat rejected it before submission. This is a verified compatibility issue for that tested signing path, not an Ed25519 or network-confirmation failure. The additional instructions require inspection; automatic acceptance of a changed wallet transaction is not supported. For comparison, test another MWA wallet with the same account while collecting the filtered diagnostic log.
+
+Choosing **Connect external wallet** explicitly starts a fresh authorization without the saved token or a pinned wallet URI. This allows Android to offer its wallet chooser and lets the wallet request connection approval. Saved authorization is reused only for signing. Wallets control the exact approval UI. A cancelled or failed connection retains the previously saved wallet.
+
+During signing, a fresh connection prompt is requested only when token reuse fails with MWA `ERROR_AUTHORIZATION_FAILED`. Other errors stop the attempt. Renewed authorization is checked against the expected account and saved before the signature request; a later signing refusal does not discard that renewal. `ERROR_NOT_SIGNED` means the wallet declined to sign for some reason and does not necessarily mean the user pressed Cancel.
+
+If the wallet opens without a connection request, check whether Android battery saver is enabled. On October 5, 2026, the user confirmed that disabling it restored connection on their phone: Solflare explained the battery saver issue, while Phantom did not. This observation establishes connection on that device; transaction approval still needs separate verification.
+
+If Phantom opens without a connection request, return to Lifeboat and read the status message. A session failure means MWA did not establish communication with the wallet; unlock the wallet and retry, then check the wallet version if it persists. An authorization failure means the session started but access was not granted. Connection errors identify the failed step without exposing authorization tokens. The app identity currently includes only `Lifeboat`; no public app website has been configured. `identity.uri` is optional in the [MWA specification](https://solana-mobile.github.io/mobile-wallet-adapter/spec/spec.html), but recommended for identity verification. Do not substitute a website belonging to another app.
+
+To configure an owned project website, set `EXPO_PUBLIC_WALLET_IDENTITY_URI` to its public HTTPS page URL and follow the [identity-verification experiment](wallet-identity/README.md). The default remains name-only until that URL is configured. Native domain verification requires the correct package/certificate association on the host; setting a URI alone is not proof of trust or successful signing.
+
+After connecting an external wallet, you can choose “Check signature without submission”. The app gets a fresh blockhash, requests a signature for a memo transaction, and checks the signature and unchanged message locally. It does not submit this transaction.

@@ -1,0 +1,400 @@
+{
+  "$schema": "https://raw.githubusercontent.com/solana-foundation/idl-spec/main/schema/v0.1.0.json",
+  "address": "oreV3EG1i9BEgiAJ8b177Z2S2rMarzak4NMv1kULvWv",
+  "metadata": {
+    "name": "ore",
+    "version": "3.8.21",
+    "spec": "0.1.0",
+    "description": "Locally reconstructed Lifeboat v0.1 subset of the ORE Steel interface",
+    "repository": "https://github.com/regolith-labs/ore",
+    "deployments": {
+      "mainnet": "oreV3EG1i9BEgiAJ8b177Z2S2rMarzak4NMv1kULvWv",
+      "testnet": null,
+      "devnet": null,
+      "localnet": null
+    }
+  },
+  "docs": [
+    "Protocol: ORE.",
+    "Locally reconstructed and verified for Lifeboat; this is not an official ORE IDL.",
+    "Source repository: https://github.com/regolith-labs/ore.",
+    "Source commit: 70763fc80d6493302181bebdbf35b90c54f8f15c.",
+    "Verification date: 2026-08-22.",
+    "This subset contains ClaimSOL, ClaimORE, Miner and Treasury. ClaimORE verified 2026-09-27 against the same pinned commit."
+  ],
+  "instructions": [
+    {
+      "name": "claimSol",
+      "docs": [
+        "Claims all SOL rewards recorded in the wallet's Miner account."
+      ],
+      "discriminator": [
+        3
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "address": "BrcSxdp1nXFzou1YyDnQJcPNBNHgoypZmTsyKBSLLXzi",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "miner",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "oreProgram",
+          "address": "oreV3EG1i9BEgiAJ8b177Z2S2rMarzak4NMv1kULvWv"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimOre",
+      "docs": [
+        "Claims all ORE rewards with bps=10000; creates the recipient ATA on-chain if missing."
+      ],
+      "discriminator": [
+        4
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "address": "BrcSxdp1nXFzou1YyDnQJcPNBNHgoypZmTsyKBSLLXzi",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "miner",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "writable": true,
+          "address": "oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp"
+        },
+        {
+          "name": "recipient",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "address": "45db2FSR4mcXdSVVZbKbwojU6uYDpMyhpEi7cC8nHaWG",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasuryTokens",
+          "writable": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "oreProgram",
+          "address": "oreV3EG1i9BEgiAJ8b177Z2S2rMarzak4NMv1kULvWv"
+        }
+      ],
+      "args": [
+        {
+          "name": "bps",
+          "type": {
+            "array": [
+              "u8",
+              8
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Miner",
+      "discriminator": [
+        103,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Treasury",
+      "discriminator": [
+        104,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "Numeric",
+      "docs": [
+        "Steel I80F48 fixed-point number represented by its little-endian bits."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bits",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Miner",
+      "docs": [
+        "ORE miner state at source commit 70763fc80d6493302181bebdbf35b90c54f8f15c."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "autoReturn",
+            "type": "u64"
+          },
+          {
+            "name": "checkpointId",
+            "type": "u64"
+          },
+          {
+            "name": "checkpointFee",
+            "type": "u64"
+          },
+          {
+            "name": "deployed",
+            "type": {
+              "array": [
+                "u64",
+                25
+              ]
+            }
+          },
+          {
+            "name": "mass",
+            "type": {
+              "array": [
+                "u64",
+                25
+              ]
+            }
+          },
+          {
+            "name": "cumulative",
+            "type": {
+              "array": [
+                "u64",
+                25
+              ]
+            }
+          },
+          {
+            "name": "roundId",
+            "type": "u64"
+          },
+          {
+            "name": "rewardsFactor",
+            "type": {
+              "defined": {
+                "name": "Numeric"
+              }
+            }
+          },
+          {
+            "name": "rewardsSol",
+            "type": "u64"
+          },
+          {
+            "name": "refinedOre",
+            "type": "u64"
+          },
+          {
+            "name": "rewardsOre",
+            "type": "u64"
+          },
+          {
+            "name": "lastClaimOreAt",
+            "type": "i64"
+          },
+          {
+            "name": "lastClaimSolAt",
+            "type": "i64"
+          },
+          {
+            "name": "lifetimeRewardsOre",
+            "type": "u64"
+          },
+          {
+            "name": "lifetimeDeployed",
+            "type": "u64"
+          },
+          {
+            "name": "lifetimeRewardsSol",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Treasury",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "motherlode",
+            "type": "u64"
+          },
+          {
+            "name": "minerRewardsFactor",
+            "type": {
+              "defined": {
+                "name": "Numeric"
+              }
+            }
+          },
+          {
+            "name": "totalRefined",
+            "type": "u64"
+          },
+          {
+            "name": "totalUnclaimed",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

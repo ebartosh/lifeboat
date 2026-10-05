@@ -1,0 +1,15 @@
+{
+  "protocol": "ore",
+  "programId": "oreV3EG1i9BEgiAJ8b177Z2S2rMarzak4NMv1kULvWv",
+  "verified": true,
+  "sourceRepository": "https://github.com/regolith-labs/ore",
+  "sourceCommit": "70763fc80d6493302181bebdbf35b90c54f8f15c",
+  "verificationDate": "2026-08-22",
+  "interfaceStatus": "locally-reconstructed",
+  "deployments": {
+    "mainnet": "oreV3EG1i9BEgiAJ8b177Z2S2rMarzak4NMv1kULvWv",
+    "testnet": null,
+    "devnet": null,
+    "localnet": null
+  }
+}

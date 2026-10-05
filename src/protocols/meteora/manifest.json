@@ -1,0 +1,8 @@
+{
+  "id": "meteora-dlmm",
+  "name": "Meteora DLMM",
+  "network": "mainnet-beta",
+  "actions": [{ "id": "withdraw-all", "label": "Withdraw all", "description": "Remove all liquidity from the selected position, claim fees and rewards, then close the empty position." }],
+  "supported": "PositionV2 and ordinary SPL Token; recipient is the connected owner wallet; WSOL stays wrapped",
+  "excluded": ["Token-2022", "legacy positions", "active locks", "separate fee recipients", "DAMM", "swaps", "wallet-wide withdrawal"]
+}

@@ -1,0 +1,396 @@
+{
+  "protocol": "kamino",
+  "programId": "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD",
+  "version": "1.25.0",
+  "accountVersion": "1",
+  "sourceRepository": "https://github.com/Kamino-Finance/klend",
+  "sourceCommit": "a08760976f51a3a58c4a0c6ea27b4a0e565bca79",
+  "idlRepository": "https://github.com/Kamino-Finance/klend-sdk",
+  "idlCommit": "38845294447623f6de3afc9dec29875f959f6f48",
+  "idlSha256": "0f676a892eb974794e8574ce2dd3ea4bc14c318d78494212d200950049afb340",
+  "scopeSourceRepository": "https://github.com/Kamino-Finance/scope",
+  "scopeSourceCommit": "2fb674083e98ced60fc4df95814358926f28ea46",
+  "farmsSourceRepository": "https://github.com/Kamino-Finance/kfarms",
+  "farmsSourceCommit": "c2141a40216cfa6f4ca2d272fed351d0b0a0b981",
+  "interfaceStatus": "locally-normalized-upstream-subset",
+  "verificationDate": "2026-09-27",
+  "repaymentRefresh": {
+    "instruction": "refreshReservesBatch",
+    "skipPriceUpdates": true,
+    "remainingAccounts": "Repeated writable Reserve, read-only LendingMarket pairs; no oracle accounts or sentinels",
+    "remainingAccountGroup": [
+      {
+        "name": "reserve",
+        "writable": true
+      },
+      {
+        "name": "lendingMarket",
+        "writable": false
+      }
+    ],
+    "sourcePath": "programs/klend/src/handlers/handler_refresh_reserves_batch.rs",
+    "verificationDate": "2026-09-28"
+  },
+  "nativeSolInterface": {
+    "splTokenVersion": "4.0.0",
+    "splTokenCrateSha256": "08459ba1b8f7c1020b4582c4edf0f5c7511a5e099a7a97570c9698d4f2337060",
+    "splTokenSource": "https://github.com/solana-labs/solana-program-library/tree/token-v4.0.0/token/program/src",
+    "systemProgramVersion": "1.17.18",
+    "systemProgramSource": "https://github.com/solana-labs/solana/blob/v1.17.18/sdk/program/src/system_instruction.rs",
+    "interestBufferLegacySlots": 600,
+    "interestBufferTrueAprSeconds": 300
+  },
+  "markets": [
+    {
+      "id": "main",
+      "address": "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF"
+    }
+  ],
+  "tokens": [
+    {
+      "symbol": "USDC",
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "decimals": 6,
+      "reserve": "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59",
+      "liquidityVault": "Bgq7trRgVMeq33yt235zM2onQ4bRDBsY5EWiTetF4qw6",
+      "collateralMint": "B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D",
+      "collateralVault": "3DzjXRfxRm6iejfyyMynR4tScddaanrePJ1NJU2XnPPL",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "WSOL",
+      "mint": "So11111111111111111111111111111111111111112",
+      "decimals": 9,
+      "reserve": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+      "liquidityVault": "GafNuUXj9rxGLn4y79dPu6MHSuPWeJR6UtTWuexpGh3U",
+      "collateralMint": "2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1",
+      "collateralVault": "8NXMyRD91p3nof61BTkJvrfpGTASHygz1cUvc3HvwyGS",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "fBTC",
+      "mint": "3orqhCKM5admbcHkHQhRAEKbXhUT5VPgsQqz7fBa6QdF",
+      "decimals": 8,
+      "reserve": "2EXNMnkHE5TY1wTwA9UKi3wpTvoXpFsDPeGC5GVttu5F",
+      "liquidityVault": "1THuvGLWjpGDiaiQCShS654wgZxYWTtCMXGEbnGU8J1",
+      "collateralMint": "CAm9RQNGQd6GrtxTf79guFRxxcgGixehEwQL8hiPSMuW",
+      "collateralVault": "8iJn9N184dYLmw44hxWJbgHGaJncfu5Ncd7U92BZ59zc",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "stkeSOL",
+      "mint": "stke7uu3fXHsGqKVVjKnkmj65LRPVrqr4bLG2SJg7rh",
+      "decimals": 9,
+      "reserve": "2gFjdQLFaFqTKMv4nFGMAP4bX2F5KAsyiJn8yZQHPKSE",
+      "liquidityVault": "4AM9UBaNQhHNuAP9SbkJJTCm4gf1U9EsmHazVsnuJDC7",
+      "collateralMint": "J4EyVMRa4KpttzXUkY7gPzx3HiJNDSAYZV5fu93Wy62t",
+      "collateralVault": "2wtujiVLkvJRUHnrCHS6C4WZ2ygXpp4C7WiysJf7x6HS",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "cbBTC",
+      "mint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "decimals": 8,
+      "reserve": "37Jk2zkz23vkAYBT66HM2gaqJuNg2nYLsCreQAVt5MWK",
+      "liquidityVault": "BcPpdmg4vxXSenvkp12XbVp6XnzwKChnzfNa6cQXLW96",
+      "collateralMint": "B3ieCZaTUp8qM9zbPqH2WDhzWpwrvHB2Q2aWB25DW97U",
+      "collateralVault": "hY6yiVepYxxv6dpzayYQ9LnhkX7yrFFpep3oxFRKRgi",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "JUP",
+      "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "decimals": 6,
+      "reserve": "4AFAGAm5G8fkcKy7QerL88E7BiSE22ZRbvJzvaKjayor",
+      "liquidityVault": "4AWAjssbahfbzS7Qs3DJ7588CsCKyNPYcVw9ztENtv23",
+      "collateralMint": "CAcPXMKSKWofmRQzLAJ9HbAPYVHY7UXgQasyyqAhqE3F",
+      "collateralVault": "4nDo6pJrD8iirtYB7T3PGjL2iJBbQamAfrb2cGLMxHCz",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "xBTC",
+      "mint": "CtzPWv73Sn1dMGVU3ZtLv9yWSyUAanBni19YWDaznnkn",
+      "decimals": 8,
+      "reserve": "4Hyrqb9Mq7y1wkq4YoqHkPdPx3VQyFY3mxMj67naC1Cb",
+      "liquidityVault": "FT8Kf9pcawxAW7AuoKoe48LXsz6E2tS34oR9SJLMq5HL",
+      "collateralMint": "3mz5bMBRcpf71uH5A6mVrgrBfBZ5qfyXc36a7Gh6sMsB",
+      "collateralVault": "ATdJn3SDmTGYqsaMgGadJfxvS9nYF6jR9vr75RfXejT",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "bbSOL",
+      "mint": "Bybit2vBJGhPF52GBdNaQfUJ6ZpThSgHBobjWZpLPb4B",
+      "decimals": 9,
+      "reserve": "6U9CnJYCQwHUEmf4Pq4oGVKHVvD29wZvtPbFNjYmgjaF",
+      "liquidityVault": "5cda5cLwVatEY1z3tJ3LmVe9tzsqCeHv39HtyUtTpNAM",
+      "collateralMint": "4VXTkcCBqqkpVABm5i7bKzbMo7aRWD4fr1W5gNnvLSK8",
+      "collateralVault": "7SiPVFywm3VXM2szWGCzAuCL3jek1Sd5db2CAFKV57Aw",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "USD1",
+      "mint": "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+      "decimals": 6,
+      "reserve": "6vKCRnEzrxRS1NybsMVEyNE3ztFAxCz6WusiiGft1PbA",
+      "liquidityVault": "F9iyEcHTJvMdihj2gJmCVXtrNaac1Vv8jzkiQq6k3kty",
+      "collateralMint": "puPqg8sFAAnPohMg7WYe8fetnukEYdpQd7MiCoiaQbi",
+      "collateralVault": "4hyCMBQPxpy3rsj3RCvTuGkfgxaq98xa9hCyXxv2EGmY",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "fwdSOL",
+      "mint": "cPQPBN7WubB3zyQDpzTK2ormx1BMdAym9xkrYUJsctm",
+      "decimals": 9,
+      "reserve": "8qnVHjKMcWAdkFnKvmRigj9J7UAVj2ooJ83GfeNn2DpR",
+      "liquidityVault": "CeaWp9abvGqdB4SBJufz7RpZbfHneuhQimKU7MKCayhx",
+      "collateralMint": "5ECkMZLtcwnD4s5pdYDg4tpeXjGFZtsteXBfbCdS4wxf",
+      "collateralVault": "BykirX7HAoL4HDHJ2LZpBSJbdrb5fZ1jTEwk4hi36Q5t",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "JTO",
+      "mint": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+      "decimals": 9,
+      "reserve": "9Ukd2MSw5RvVFaN8jLhWxjHLEGiF1F6Hf7v3Zq5hZsKB",
+      "liquidityVault": "FBhE6TAt6vtpcZaCKNkttAJqzTLGpfYDchfziw9dgFiL",
+      "collateralMint": "FEHJup4WNxmpBUuiRbF3iVdHptUpWNreijXDoh5Nc5HM",
+      "collateralVault": "B8N3jrt1hqJ9ZcJMp1vf7NGoNJqMxWENZoh2om9G2pi",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "USDS",
+      "mint": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "decimals": 6,
+      "reserve": "BHUi32TrEsfN2U821G4FprKrR4hTeK4LCWtA3BFetuqA",
+      "liquidityVault": "4aE6ow1YNDm9MRNdk8HRzFFzvs9FXBgEttWSMrH6hupD",
+      "collateralMint": "6nnt6N4Ay9tBeMWnVWKS24hDtE6R3fshi5TteUcSKJcQ",
+      "collateralVault": "3FVdzLJ8tqBmuNuSLADJFKFaJQt6F9x6zAAHCoLUFCJA",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "FDUSD",
+      "mint": "9zNQRsGLjNKwCUU5Gq5LR8beUCPzQMVMqKAi3SSZh54u",
+      "decimals": 6,
+      "reserve": "Bpc4kAh29J3YDQUMJJdGdr1zBAhTQjC48R1B8YTWudsi",
+      "liquidityVault": "77NygHBchudmJPaWi8ak4vNVmuJa1JD5rFDBthxhd6p3",
+      "collateralMint": "38HzfrjShkT7fRzYxyoEZeoH6vhNBmJoHrefzzBENEK1",
+      "collateralVault": "FFfZKxWhxtxzGwx254bejhediu316F2A3B6JML7CEuxy",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "hSOL",
+      "mint": "he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A",
+      "decimals": 9,
+      "reserve": "CExamod1Ai3d1N8Vh7sBjt5xbZzb2VmGMAFocf7fxCzm",
+      "liquidityVault": "3mLgvnLFbyq4U1pLYvLQu8t3ZJ1Rjzq1dby6fWi7bfqi",
+      "collateralMint": "6DHsvGuiy4SHnmcsdwGrq5L5CcvTbCwXzyfUULmEUHe8",
+      "collateralVault": "HLnQARKEe1F8BUR1wcHG1XzS9ichjDmFTNv7WKea9VZe",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "vSOL",
+      "mint": "vSoLxydx6akxyMD9XEcPvGYNGq6Nn66oqVb3UkGkei7",
+      "decimals": 9,
+      "reserve": "CHBNUPdjeo2N5QkZY2uAqv7TW5EbCTMsfvaskCBuxbom",
+      "liquidityVault": "6P5r6VmS7FL8fZa3h2oGbEbc1mZppHq5orHFee6SL3UE",
+      "collateralMint": "4LtX2tsFxLr3hBpNeuA7Ka92SYEcwXvA1NC8u51L8zB9",
+      "collateralVault": "616GRYEFMU4EnAyQuwP3Z4Hn1Ydxb8ZrWuis58H7LVp9",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "dfdvSOL",
+      "mint": "sctmB7GPi5L2Q5G9tUSzXvhZ4YiDMEGcRov9KfArQpx",
+      "decimals": 9,
+      "reserve": "CkgQnPbuHHwSv2mNdAKH79TKSqC6jsyttK9yh4MPH6z3",
+      "liquidityVault": "ABXjerwMyHoTJ28yPv8RAMPU6XimqNCzx65kintzEbEU",
+      "collateralMint": "2Ab1o3bB6DMBm4Y3MrhWbYpJ2Y56VnLCaVpMvezLd6aK",
+      "collateralVault": "2cKmr1QVxdxLRNe8TgaEPfCTHK3maVjJTVnHCPFHQdek",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "JupSOL",
+      "mint": "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v",
+      "decimals": 9,
+      "reserve": "DGQZWCY17gGtBUgdaFs1VreJWsodkjFxndPsskwFKGpp",
+      "liquidityVault": "FbbgvvnwfN25cyX52Zqut2ZTbtvCWZbhKS177gfdUd6K",
+      "collateralMint": "8euYpQt56z9hA2ZcFCQuWK6gAptrLcJuMZ5PtMpUwbuY",
+      "collateralVault": "9w2hfobbGi94e7mg1HxchKuhpfHJ2CENnAfyeezDF46c",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "JLP",
+      "mint": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
+      "decimals": 6,
+      "reserve": "EAA3VVsxUuQB1Tm5x7TJkq9ATtiX5Qwq8ok7gXwim7oo",
+      "liquidityVault": "7dD6bhVgWtxyQPDAuM6Vprd22K7H6xzDYdsUbg9B3KUC",
+      "collateralMint": "3SET7bMq4ScRZGjZP7NiL2hwTS7SfF9HQPwqPNVD1gL9",
+      "collateralVault": "2FMHxyV9fuHVqpBysoFFSzooMu3Epm8GKeUczFZ8adT2",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "EURC",
+      "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+      "decimals": 6,
+      "reserve": "EGPE45iPkme8G8C1xFDNZoZeHdP3aRYtaAfAQuuwrcGZ",
+      "liquidityVault": "DrZeFpbzMXmNnMqsQFngQeJiVgUpX8vaCHoJKj9FGMYv",
+      "collateralMint": "H6MFD7kvZ1qtTRtf7SpJzMFAr3wds2vKpQMokNsCfj3R",
+      "collateralVault": "B5jk5tYLx7yrzvbkEwUbVUP5uDfkVW5V9xi9ibsNWrJm",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "JITOSOL",
+      "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+      "decimals": 9,
+      "reserve": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW",
+      "liquidityVault": "6sga1yRArgQRqa8Darhm54EBromEpV3z8iDAvMTVYXB3",
+      "collateralMint": "9ucQp7thL38MDDTSER5ou24QnVSTZFLevDsZC1cAFkKy",
+      "collateralVault": "7y5Nko765HcZiTd2gFtxorELuJZcbQqmrmTbUVoiwGyS",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "MSOL",
+      "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+      "decimals": 9,
+      "reserve": "FBSyPnxtHKLBZ4UeeUyAnbtFuAmTHLtso9YtsqRDRWpM",
+      "liquidityVault": "CQWUdThEbNMjcoEjGyCMTGXHpKvW1aB8JF31hKa1FQQN",
+      "collateralMint": "HTHAb6CigDQXtKuYX1Tad5hoguguRnRmt6DguosVsKWC",
+      "collateralVault": "G9tjwEXduCMuz6PFwBW6o73Lu36MwhAvt2deS7o1MQaS",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "ETH",
+      "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "decimals": 8,
+      "reserve": "febGYTnFX4GbSGoFHFeJXUHgNaK53fB23uDins9Jp1E",
+      "liquidityVault": "GRGmgWor2PX3sNkoA5wZuNBBYoCnZPoiAufAVvG3WDEi",
+      "collateralMint": "BE5LqGwfAPYHEGjqR48C8CUu1nCP9BbJwrDUhB141rnL",
+      "collateralVault": "4hGzrrHWyddMwPedf8vdTW1vCPfWQrT3mu6r67kqEMjx",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "USDT",
+      "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "decimals": 6,
+      "reserve": "H3t6qZ1JkguCNTi9uzVKqQ7dvt2cum4XiXWom6Gn5e5S",
+      "liquidityVault": "2Eff8Udy2G2gzNcf2619AnTx3xM4renEv4QrHKjS1o9N",
+      "collateralMint": "B8zf4kojJbwgCRKA7rLaLhRCZBGhgAJp8wPBVZZHMhSv",
+      "collateralVault": "CTCpzgNbPwWQSYamu4ZomgFuHf8DUGwq8hSYWVLurSJD",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "bSOL",
+      "mint": "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",
+      "decimals": 9,
+      "reserve": "H9vmCVd77N1HZa36eBn3UnftYmg4vQzPfm1RxabHAMER",
+      "liquidityVault": "AQeaZUp248NPCBwRuVPzCsN3DX6DsgVHyiE25z6eEeAs",
+      "collateralMint": "FtLmvJvsGW41fE7hwsp53uv2UqHakZ3QS7UBb5WoZtZg",
+      "collateralVault": "5JYgSp95BqxEAZteg7QmS2afk7pH7dvuqsqfUDorxKZb",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "tBTC",
+      "mint": "6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU",
+      "decimals": 8,
+      "reserve": "Hcz1o77tF9TpdEHcvrx29tz7SBKoQEwJA1wuJqGZYnTw",
+      "liquidityVault": "J2Ex2efY1e9TizMrjFQqtqGTwNBx888GTctHEkWemThV",
+      "collateralMint": "37cmWYYdAC88pQ4tGBu5ae28NctvzkNYG7w9xGHNeTPc",
+      "collateralVault": "3mAggM7aVRtqSDgVpVUdDddbXxqr2pa6x6AcHDUrSMSM",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "jSOL",
+      "mint": "7Q2afV64in6N6SeZsAAB81TJzwDoD6zpqmHkzi9Dcavn",
+      "decimals": 9,
+      "reserve": "HD93Fq3gmVh3J7euJJ5MBw8Ph3ebeMFS699JQePN4XgN",
+      "liquidityVault": "BkCTFeGZ19hGZCo6dG4uBXEF9cC5LbTEMpKxwJUsnFFM",
+      "collateralMint": "BkwgQpQmd77FotNDgGe4j5TYP1omrzdfrdT9qr8KLZFm",
+      "collateralVault": "DUbRgdtD7oSNyzpnzLoEZaJH1ik52w2sGQoJJv7bqGsb",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "pSOL",
+      "mint": "pSo1f9nQXWgXibFtKf7NWYxb5enAM4qfP6UJSiXRQfL",
+      "decimals": 9,
+      "reserve": "HV9KsS5mB4b9CFhDJVKdfxWBAomYfUk5PeUsdgMQsUrB",
+      "liquidityVault": "CorvqWkB9rRNQzwXXVyg52ASor8aDpFkEwaYnFhD2vnF",
+      "collateralMint": "2CZr3QJSktRmE2WqpFoyc46jWzP2ZmZHuQk4hXzC159q",
+      "collateralVault": "JB1i9Mo6SrjkwrLbLaeqfy6FPEQpnno2PfmchkGdFUAA",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "WBTC",
+      "mint": "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
+      "decimals": 8,
+      "reserve": "HYnVhjsvU1vBKTPsXs1dWe6cJeuU8E4gjoYpmwe81KzN",
+      "liquidityVault": "3y8JYyF8HPPK5YeUzxPPEvAahdPX4Z5wdZTiVc1atuQi",
+      "collateralMint": "A2MFkvvT3fhFg3DmHBzBvgxh8iF29WFjbeYSpPfLPfhb",
+      "collateralVault": "7AcWkPj1yafjgxhYCkaoxCtFapCszXeVAMnXnGuDf6AC",
+      "repay": true,
+      "withdraw": true
+    },
+    {
+      "symbol": "dSOL",
+      "mint": "Dso1bDeDjCQxTrWHqUUi63oBvV7Mdm6WaobLbQ7gnPQ",
+      "decimals": 9,
+      "reserve": "StGKGcLQoTsWzQ1tFY2bWqrdiuBhqdFE4niiAutQxQB",
+      "liquidityVault": "EyhsTc5zapEWfuigEfUmPAywmsq5VQDrWscj45cKrHo",
+      "collateralMint": "EJsh17Y4qw1N7WzTLmGiEHPHDA7ZnRZqREW5y6myUVv6",
+      "collateralVault": "C3yT2C9DGa8e7u8WZQWr2KqJKzp8Lqe6bCnskG3K5nZH",
+      "repay": true,
+      "withdraw": true
+    }
+  ],
+  "reserveInventory": {
+    "fixture": "tests/fixtures/kamino/inventory.json",
+    "kind": "public mainnet read-only getProgramAccounts and getMultipleAccounts",
+    "capturedAt": "2026-09-28T10:57:06.193Z",
+    "discoverySlot": "451298610",
+    "sourceCommit": "a08760976f51a3a58c4a0c6ea27b4a0e565bca79",
+    "market": "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF",
+    "reserveSize": 8624,
+    "marketOffset": 32,
+    "discoveryFilters": [
+      {
+        "memcmp": {
+          "offset": 0,
+          "bytes": "8MMas8GHex6"
+        }
+      },
+      {
+        "memcmp": {
+          "offset": 32,
+          "bytes": "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5PfF"
+        }
+      }
+    ],
+    "reserves": 58,
+    "uniqueMints": 55
+  }
+}

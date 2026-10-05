@@ -1,0 +1,1473 @@
+[
+  {
+    "symbol": "adraSOL",
+    "mint": "sctmY8fJucsJatwHz6P48RuWBBkdBMNmSMuBYrWFdrw",
+    "decimals": 9,
+    "reserve": "64AZMUHLB6NYvQSt41JTer4v8NAFDCz5sUPb7dYpCxa",
+    "liquidityVault": "3tYeKEBZxcGcuZiEoDMQvn81q4MXnCzqSnUUUcWpPgeb",
+    "collateralMint": "94fVLm9PX7WM2zrqCCY1P69NY2Hj81B3LxtGRsUFskrL",
+    "collateralVault": "F7CV629VXakovusXcg4DXRJFtYprh8HRmKagtT6PksV8",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "dSOL",
+    "mint": "Dso1bDeDjCQxTrWHqUUi63oBvV7Mdm6WaobLbQ7gnPQ",
+    "decimals": 9,
+    "reserve": "StGKGcLQoTsWzQ1tFY2bWqrdiuBhqdFE4niiAutQxQB",
+    "liquidityVault": "EyhsTc5zapEWfuigEfUmPAywmsq5VQDrWscj45cKrHo",
+    "collateralMint": "EJsh17Y4qw1N7WzTLmGiEHPHDA7ZnRZqREW5y6myUVv6",
+    "collateralVault": "C3yT2C9DGa8e7u8WZQWr2KqJKzp8Lqe6bCnskG3K5nZH",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "WSOL",
+    "mint": "So11111111111111111111111111111111111111112",
+    "decimals": 9,
+    "reserve": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+    "liquidityVault": "GafNuUXj9rxGLn4y79dPu6MHSuPWeJR6UtTWuexpGh3U",
+    "collateralMint": "2UywZrUdyqs5vDchy7fKQJKau2RVyuzBev2XKGPDSiX1",
+    "collateralVault": "8NXMyRD91p3nof61BTkJvrfpGTASHygz1cUvc3HvwyGS",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "ETH",
+    "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+    "decimals": 8,
+    "reserve": "febGYTnFX4GbSGoFHFeJXUHgNaK53fB23uDins9Jp1E",
+    "liquidityVault": "GRGmgWor2PX3sNkoA5wZuNBBYoCnZPoiAufAVvG3WDEi",
+    "collateralMint": "BE5LqGwfAPYHEGjqR48C8CUu1nCP9BbJwrDUhB141rnL",
+    "collateralVault": "4hGzrrHWyddMwPedf8vdTW1vCPfWQrT3mu6r67kqEMjx",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "fBTC",
+    "mint": "3orqhCKM5admbcHkHQhRAEKbXhUT5VPgsQqz7fBa6QdF",
+    "decimals": 8,
+    "reserve": "2EXNMnkHE5TY1wTwA9UKi3wpTvoXpFsDPeGC5GVttu5F",
+    "liquidityVault": "1THuvGLWjpGDiaiQCShS654wgZxYWTtCMXGEbnGU8J1",
+    "collateralMint": "CAm9RQNGQd6GrtxTf79guFRxxcgGixehEwQL8hiPSMuW",
+    "collateralVault": "8iJn9N184dYLmw44hxWJbgHGaJncfu5Ncd7U92BZ59zc",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "picoSOL",
+    "mint": "picobAEvs6w7QEknPce34wAE4gknZA9v5tTonnmHYdX",
+    "decimals": 9,
+    "reserve": "2UFz8kwraHybFyKhGQRwAsE5NtNpAhWs2X5grGoS7hnQ",
+    "liquidityVault": "Gm8VfrmSViEaVjgzQonvV53EK834hcHXRE8DpfxjJe2b",
+    "collateralMint": "8uCVbHrv4RW6QRaWG95guL4eFBk1rkFq7zYzb9QKCVGm",
+    "collateralVault": "78HxBCvtdPxqX2iWGxw5rryy4MTp6PZrW4q2aFPfxfLb",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "stkeSOL",
+    "mint": "stke7uu3fXHsGqKVVjKnkmj65LRPVrqr4bLG2SJg7rh",
+    "decimals": 9,
+    "reserve": "2gFjdQLFaFqTKMv4nFGMAP4bX2F5KAsyiJn8yZQHPKSE",
+    "liquidityVault": "4AM9UBaNQhHNuAP9SbkJJTCm4gf1U9EsmHazVsnuJDC7",
+    "collateralMint": "J4EyVMRa4KpttzXUkY7gPzx3HiJNDSAYZV5fu93Wy62t",
+    "collateralVault": "2wtujiVLkvJRUHnrCHS6C4WZ2ygXpp4C7WiysJf7x6HS",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "PYUSD",
+    "mint": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+    "decimals": 6,
+    "reserve": "2gc9Dm1eB6UgVYFBUN9bWks6Kes9PbWSaPaa9DqyvEiN",
+    "liquidityVault": "Gm2itCNPBpBSSrgCA194pmErjwHAFVpvBBFvpdTF5LuJ",
+    "collateralMint": "2dQkXr1e9LBvT2QcfKrzZaWY6gGAAVoCjLgkWFk3Mhkj",
+    "collateralVault": "6LNyxFoeThPa3kPAWUYjEXPMsEd93VQUo5cuJfxcXaGp",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "reserve mint or token program mismatch",
+    "withdrawReason": "reserve mint or token program mismatch",
+    "checks": {
+      "repayState": "reserve mint or token program mismatch",
+      "withdrawState": "reserve mint or token program mismatch",
+      "liquidity": "Mint is missing or has invalid owner/type",
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "Token-2022 requires a separate extension"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "cbBTC",
+    "mint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+    "decimals": 8,
+    "reserve": "37Jk2zkz23vkAYBT66HM2gaqJuNg2nYLsCreQAVt5MWK",
+    "liquidityVault": "BcPpdmg4vxXSenvkp12XbVp6XnzwKChnzfNa6cQXLW96",
+    "collateralMint": "B3ieCZaTUp8qM9zbPqH2WDhzWpwrvHB2Q2aWB25DW97U",
+    "collateralVault": "hY6yiVepYxxv6dpzayYQ9LnhkX7yrFFpep3oxFRKRgi",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "JUP",
+    "mint": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    "decimals": 6,
+    "reserve": "4AFAGAm5G8fkcKy7QerL88E7BiSE22ZRbvJzvaKjayor",
+    "liquidityVault": "4AWAjssbahfbzS7Qs3DJ7588CsCKyNPYcVw9ztENtv23",
+    "collateralMint": "CAcPXMKSKWofmRQzLAJ9HbAPYVHY7UXgQasyyqAhqE3F",
+    "collateralVault": "4nDo6pJrD8iirtYB7T3PGjL2iJBbQamAfrb2cGLMxHCz",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "xBTC",
+    "mint": "CtzPWv73Sn1dMGVU3ZtLv9yWSyUAanBni19YWDaznnkn",
+    "decimals": 8,
+    "reserve": "4Hyrqb9Mq7y1wkq4YoqHkPdPx3VQyFY3mxMj67naC1Cb",
+    "liquidityVault": "FT8Kf9pcawxAW7AuoKoe48LXsz6E2tS34oR9SJLMq5HL",
+    "collateralMint": "3mz5bMBRcpf71uH5A6mVrgrBfBZ5qfyXc36a7Gh6sMsB",
+    "collateralVault": "ATdJn3SDmTGYqsaMgGadJfxvS9nYF6jR9vr75RfXejT",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "wstETH",
+    "mint": "ZScHuTtqZukUrtZS43teTKGs2VqkKL8k4QCouR2n6Uo",
+    "decimals": 8,
+    "reserve": "4eUxuaHSHNTftaui3XVW32d2Ph2hKBLpuMP25gQ5MqF4",
+    "liquidityVault": "3VyrRzpif94xAATHxERnDyJuiVPJGXeNd4U77Kcq47M1",
+    "collateralMint": "2Nk9GpQU4BuJB73vag32GUXgyxqSRFNgijXsx8xefkCz",
+    "collateralVault": "EowPfYbSQCwmwgeURXoMThygiYvme8URwQvYCmaW5izW",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "status=2 (Hidden) excluded by current operation checks"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "kSOLBSOLOrca",
+    "mint": "9HB4kAMLSYfGFfN142DKMyPyHyZQ8pXF8M1STbDudodY",
+    "decimals": 6,
+    "reserve": "57U9pEC8NsWvHgWywd2xHTRkGQzWWYsWivxYRhtxZrLB",
+    "liquidityVault": "7czHgMf1mgWWhLoXYy1FJtnLhvmCfnSUc4fRYLQkjcix",
+    "collateralMint": "9uvxPXzVYWe8qb7S4gUBqsvASmRMVWo5GSAcMmdZ1LQr",
+    "collateralVault": "CHjxiTTqcfjGWmJvdNixYXjKSg5n9pRLXSh8XfGPtctv",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "autodeleverageEnabled=1 excluded",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "CHAI",
+    "mint": "3jsFX1tx2Z8ewmamiwSU851GzyzM2DJMq7KWW5DM8Py3",
+    "decimals": 8,
+    "reserve": "5YpGenXaAowj4HS33AvirVb8P4tgue7S7YaY6MyYZ7LD",
+    "liquidityVault": "6G3qPn2NSBdL16zgXEGewGVYrMihergxGSzbBtKnaHhh",
+    "collateralMint": "2d1aTmJMJozqmTLhKKhQorkj6NZTRtUt69YtAvzjtJVK",
+    "collateralVault": "2DAHqtsuk1VmJ3A5t6Avh4r1HYuxJNow96foVnJsDvtw",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "status=1 (Obsolete) excluded by current operation checks",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "USDC",
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "decimals": 6,
+    "reserve": "5xXxt9uVHrcT5b1KveAT5ZWgk2f74aDjnLEDDEeAxgpN",
+    "liquidityVault": "B6vC48TVCsVzUxAfWwrRA2EwJRoeVMC3SXuCuE6Jceau",
+    "collateralMint": "DyoQfufdQ7HErfzst9KWE8njYzV7zgJQFkCWQ8yATLEW",
+    "collateralVault": "AJyNm9aCV2eWxLA7cRfcFUTpcjGWM8SkqWwstH6d9brF",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "status=2 (Hidden) excluded by current operation checks"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "bbSOL",
+    "mint": "Bybit2vBJGhPF52GBdNaQfUJ6ZpThSgHBobjWZpLPb4B",
+    "decimals": 9,
+    "reserve": "6U9CnJYCQwHUEmf4Pq4oGVKHVvD29wZvtPbFNjYmgjaF",
+    "liquidityVault": "5cda5cLwVatEY1z3tJ3LmVe9tzsqCeHv39HtyUtTpNAM",
+    "collateralMint": "4VXTkcCBqqkpVABm5i7bKzbMo7aRWD4fr1W5gNnvLSK8",
+    "collateralVault": "7SiPVFywm3VXM2szWGCzAuCL3jek1Sd5db2CAFKV57Aw",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "USDC",
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "decimals": 6,
+    "reserve": "6pazpY4icuXZ5sb2jMWAqdG4TtbUoY1SJ45237Fjht9h",
+    "liquidityVault": "84hrTtYsqZv8QK6yCPHHsyao7RBVZXXymcVUPPFyidwv",
+    "collateralMint": "HDrCjxSfrN3ZDG1GfdFenyEKqsVQRigLMz2FN5PRho9W",
+    "collateralVault": "3aSjzXs1umaUeqnJVfzrn93Fq9GkkkVgYvQhxjaF4dWy",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "status=2 (Hidden) excluded by current operation checks"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "USD1",
+    "mint": "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB",
+    "decimals": 6,
+    "reserve": "6vKCRnEzrxRS1NybsMVEyNE3ztFAxCz6WusiiGft1PbA",
+    "liquidityVault": "F9iyEcHTJvMdihj2gJmCVXtrNaac1Vv8jzkiQq6k3kty",
+    "collateralMint": "puPqg8sFAAnPohMg7WYe8fetnukEYdpQd7MiCoiaQbi",
+    "collateralVault": "4hyCMBQPxpy3rsj3RCvTuGkfgxaq98xa9hCyXxv2EGmY",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "kSOLJITOSOLRaydium",
+    "mint": "GYiUmJ8reqYAdTQtx6CRFawHqPXx9yzkUFvaUVE8PskP",
+    "decimals": 6,
+    "reserve": "75WrtSz7rLCdBvAQhtHi8M2jC8HnpT8iUxcYkdeawr37",
+    "liquidityVault": "4oFVUAYbkVZX6CqmfKPCYua3LpuKHxjCE6sgpbmcjXn1",
+    "collateralMint": "DdG9rfSuhCYByrJEmJuHMf9BEMRJPBDs9JiZD8tStT5s",
+    "collateralVault": "Enf7PV8fcxFXkx12B8J7mowoCtBWrannME1dX4vhnQcw",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "autodeleverageEnabled=1 excluded",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "nxSOL",
+    "mint": "sctmTAsDn4tLUcemqoqYijfuRkiEfAMPi84PNq2EueR",
+    "decimals": 9,
+    "reserve": "8gVpWfWDCtCcUX1meSphqqpyWBceLCcrs9yEXwKKjQrL",
+    "liquidityVault": "6JbDFb63BrXoHf4XkVEpRZLS13gyC8Phb5YQmhEBLave",
+    "collateralMint": "9YZeiTwWz6UVzLeJdrSGyLZY3iLVRRxDwsHQyoYBH8NG",
+    "collateralVault": "54qDfnUQYJMmudA5TWY8ZpLT95pZ4h4ZrGzWghSeZb1e",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "fwdSOL",
+    "mint": "cPQPBN7WubB3zyQDpzTK2ormx1BMdAym9xkrYUJsctm",
+    "decimals": 9,
+    "reserve": "8qnVHjKMcWAdkFnKvmRigj9J7UAVj2ooJ83GfeNn2DpR",
+    "liquidityVault": "CeaWp9abvGqdB4SBJufz7RpZbfHneuhQimKU7MKCayhx",
+    "collateralMint": "5ECkMZLtcwnD4s5pdYDg4tpeXjGFZtsteXBfbCdS4wxf",
+    "collateralVault": "BykirX7HAoL4HDHJ2LZpBSJbdrb5fZ1jTEwk4hi36Q5t",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "STSOL",
+    "mint": "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+    "decimals": 9,
+    "reserve": "9JB9EMxEp9gZy3i1jqD2yvNYWKRZCP6f3drdQw853swH",
+    "liquidityVault": "9oiLwWmJXViXp2AAoFUV4rFmhhq4J1gG3h8iVrDfxfvt",
+    "collateralMint": "3xcWMRiK6hRnBemUrreLt87KGkaKg4gi4io6m26Zhzjs",
+    "collateralVault": "BkyJ5GGwbazDu7TYDUmgZtqPjhyoDV8BEnQ636cHbf2c",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "status=1 (Obsolete) excluded by current operation checks"
+    ],
+    "availability": [
+      "zero recorded withdrawal liquidity"
+    ]
+  },
+  {
+    "symbol": "JTO",
+    "mint": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+    "decimals": 9,
+    "reserve": "9Ukd2MSw5RvVFaN8jLhWxjHLEGiF1F6Hf7v3Zq5hZsKB",
+    "liquidityVault": "FBhE6TAt6vtpcZaCKNkttAJqzTLGpfYDchfziw9dgFiL",
+    "collateralMint": "FEHJup4WNxmpBUuiRbF3iVdHptUpWNreijXDoh5Nc5HM",
+    "collateralVault": "B8N3jrt1hqJ9ZcJMp1vf7NGoNJqMxWENZoh2om9G2pi",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "strongSOL",
+    "mint": "strng7mqqc1MBJJV6vMzYbEqnwVGvKKGKedeCvtktWA",
+    "decimals": 9,
+    "reserve": "A2J2CEwmwa9aTKbEfNoik6YTyNep9GtvNjU65okWYhwn",
+    "liquidityVault": "91eZvHs1J6JUeis7U48Ykrsudvb867VfnZBdyYKiaTyu",
+    "collateralMint": "3wVaxLYCKXoqVsxF2QRikYEFvhWGDXdc1BbVT4myZJzq",
+    "collateralVault": "GdsQjiZ7o338Fs9HEikddYhqNNUq67eZLZLjsJ3aeJWz",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "USDC",
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "decimals": 6,
+    "reserve": "AWnKJ9dsiHcoDCThxE5E93ikDTAXkApoNwrKM2tp9KFJ",
+    "liquidityVault": "BcugfiNFtKxrBchbZZeiEXYUt9YvVKgtTpjXp2fjRhjy",
+    "collateralMint": "8EFj1QBADsCs2D1DNWWTHjsoWmEPW8FGFgKdsAeqoQJi",
+    "collateralVault": "4pY3tsDKhP9dLv7ry5F4jaCs9kmtpHoetq4SHL8kLfzg",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "status=2 (Hidden) excluded by current operation checks"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "CASH",
+    "mint": "CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH",
+    "decimals": 6,
+    "reserve": "ApQkX32ULJUzszZDe986aobLDLMNDoGQK8tRm6oD6SsA",
+    "liquidityVault": "7Emb9oP2pbrHvvfueXEbt1DbT9Qet454jgQmmz8yNZ3P",
+    "collateralMint": "9ZJtGcX6BfVY8Uu8TTxcv2H5XJgMZh8WgFkoADwsYjZi",
+    "collateralVault": "8vUTaDwzH1iGLKFxGZqxWtHsy2dzKQ9FxCCx6A6CAAVH",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "reserve mint or token program mismatch",
+    "withdrawReason": "reserve mint or token program mismatch",
+    "checks": {
+      "repayState": "reserve mint or token program mismatch",
+      "withdrawState": "reserve mint or token program mismatch",
+      "liquidity": "Mint is missing or has invalid owner/type",
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "Token-2022 requires a separate extension"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "kUXDUSDCOrca",
+    "mint": "4G9USgnbg6fDTQ5AUfpCjM89zqbzWj32xfqvsaAu66DM",
+    "decimals": 6,
+    "reserve": "AxuWrPrJfwrUTvCWRxpkSQct6q8k1YSJzxhyYw2AAmv2",
+    "liquidityVault": "5srbg3QKPf2mSX5Sb8FtK6Azzu33fNkpDXiGcWtqy8Vx",
+    "collateralMint": "9ArykePzWjizyfYg9eEZXHyqwBccSL5wsqKzsHsXkTQV",
+    "collateralVault": "FQGzcdrx4aZsH2oRRKUKPUwF1BpqsyYh4mHDfgRBne8f",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "autodeleverageEnabled=1 excluded",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "hubSOL",
+    "mint": "HUBsveNpjo5pWqNkH57QzxjQASdTVXcSK7bVKTSZtcSX",
+    "decimals": 9,
+    "reserve": "B5uYvxUcwX5fCB4msGU4DaHh8k6fsSkKHNboy94F9vbt",
+    "liquidityVault": "HsT1ceN4BAkKHBARnciNHuwzbaHbWJkkrZibQwHKKuZw",
+    "collateralMint": "3EEePyXDrxqyZgVGh6c4N52rdnbA4dVuTNCFu7yGA617",
+    "collateralVault": "FuHetcCFnWo6CiH31f2jUWuVW5rWzMeocvLT2jwLCEKa",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "USDS",
+    "mint": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+    "decimals": 6,
+    "reserve": "BHUi32TrEsfN2U821G4FprKrR4hTeK4LCWtA3BFetuqA",
+    "liquidityVault": "4aE6ow1YNDm9MRNdk8HRzFFzvs9FXBgEttWSMrH6hupD",
+    "collateralMint": "6nnt6N4Ay9tBeMWnVWKS24hDtE6R3fshi5TteUcSKJcQ",
+    "collateralVault": "3FVdzLJ8tqBmuNuSLADJFKFaJQt6F9x6zAAHCoLUFCJA",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "FDUSD",
+    "mint": "9zNQRsGLjNKwCUU5Gq5LR8beUCPzQMVMqKAi3SSZh54u",
+    "decimals": 6,
+    "reserve": "Bpc4kAh29J3YDQUMJJdGdr1zBAhTQjC48R1B8YTWudsi",
+    "liquidityVault": "77NygHBchudmJPaWi8ak4vNVmuJa1JD5rFDBthxhd6p3",
+    "collateralMint": "38HzfrjShkT7fRzYxyoEZeoH6vhNBmJoHrefzzBENEK1",
+    "collateralVault": "FFfZKxWhxtxzGwx254bejhediu316F2A3B6JML7CEuxy",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "cgntSOL",
+    "mint": "CgnTSoL3DgY9SFHxcLj6CgCgKKoTBr6tp4CPAEWy25DE",
+    "decimals": 9,
+    "reserve": "BvafE5Sm6rLrBbVRtJ2FkCzfNJQ2TjcL8bvPZULUDYrt",
+    "liquidityVault": "6jcTTL6Usm2i87XMSerXTo3dVpx3jAuuhuVxPLLHePs5",
+    "collateralMint": "DY6irtAtWbU3Xn6Z5p2g9HSBBir5Q9D5MLh5CrtbJ9Fe",
+    "collateralVault": "CrqN6VEbSdf3fTzkrrRWF4UWHMwB43Hq7NMHHZi7MBSP",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "hSOL",
+    "mint": "he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A",
+    "decimals": 9,
+    "reserve": "CExamod1Ai3d1N8Vh7sBjt5xbZzb2VmGMAFocf7fxCzm",
+    "liquidityVault": "3mLgvnLFbyq4U1pLYvLQu8t3ZJ1Rjzq1dby6fWi7bfqi",
+    "collateralMint": "6DHsvGuiy4SHnmcsdwGrq5L5CcvTbCwXzyfUULmEUHe8",
+    "collateralVault": "HLnQARKEe1F8BUR1wcHG1XzS9ichjDmFTNv7WKea9VZe",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "vSOL",
+    "mint": "vSoLxydx6akxyMD9XEcPvGYNGq6Nn66oqVb3UkGkei7",
+    "decimals": 9,
+    "reserve": "CHBNUPdjeo2N5QkZY2uAqv7TW5EbCTMsfvaskCBuxbom",
+    "liquidityVault": "6P5r6VmS7FL8fZa3h2oGbEbc1mZppHq5orHFee6SL3UE",
+    "collateralMint": "4LtX2tsFxLr3hBpNeuA7Ka92SYEcwXvA1NC8u51L8zB9",
+    "collateralVault": "616GRYEFMU4EnAyQuwP3Z4Hn1Ydxb8ZrWuis58H7LVp9",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "dfdvSOL",
+    "mint": "sctmB7GPi5L2Q5G9tUSzXvhZ4YiDMEGcRov9KfArQpx",
+    "decimals": 9,
+    "reserve": "CkgQnPbuHHwSv2mNdAKH79TKSqC6jsyttK9yh4MPH6z3",
+    "liquidityVault": "ABXjerwMyHoTJ28yPv8RAMPU6XimqNCzx65kintzEbEU",
+    "collateralMint": "2Ab1o3bB6DMBm4Y3MrhWbYpJ2Y56VnLCaVpMvezLd6aK",
+    "collateralVault": "2cKmr1QVxdxLRNe8TgaEPfCTHK3maVjJTVnHCPFHQdek",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "USDC",
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "decimals": 6,
+    "reserve": "D6q6wuQSrifJKZYpR1M8R4YawnLDtDsMmWM1NbBmgJ59",
+    "liquidityVault": "Bgq7trRgVMeq33yt235zM2onQ4bRDBsY5EWiTetF4qw6",
+    "collateralMint": "B8V6WVjPxW1UGwVDfxH2d2r8SyT4cqn7dQRK6XneVa7D",
+    "collateralVault": "3DzjXRfxRm6iejfyyMynR4tScddaanrePJ1NJU2XnPPL",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "JupSOL",
+    "mint": "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v",
+    "decimals": 9,
+    "reserve": "DGQZWCY17gGtBUgdaFs1VreJWsodkjFxndPsskwFKGpp",
+    "liquidityVault": "FbbgvvnwfN25cyX52Zqut2ZTbtvCWZbhKS177gfdUd6K",
+    "collateralMint": "8euYpQt56z9hA2ZcFCQuWK6gAptrLcJuMZ5PtMpUwbuY",
+    "collateralVault": "9w2hfobbGi94e7mg1HxchKuhpfHJ2CENnAfyeezDF46c",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "USDH",
+    "mint": "USDH1SM1ojwWUga67PGrgFWUHibbjqMvuMaDkRJTgkX",
+    "decimals": 6,
+    "reserve": "DaGyAQJrdkLCzYZiUWg49NV8vabDnhR7ETwLu5eQgL56",
+    "liquidityVault": "DZyy6x2SrRSSpaWwM6fDgiqwkdqTqf61frmnvaBHuLT6",
+    "collateralMint": "CXUgxmXQifBHjF6BvD3HQGgxnBEiFFFcbsGr7TUGC7Xn",
+    "collateralVault": "BHGNUpgvgiheQE7J4X4HTJ2un6SGeBvxqd4rHQ15YLtw",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "status=1 (Obsolete) excluded by current operation checks",
+      "autodeleverageEnabled=1 excluded",
+      "disableUsageAsCollOutsideEmode=1 excluded",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "JLP",
+    "mint": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
+    "decimals": 6,
+    "reserve": "EAA3VVsxUuQB1Tm5x7TJkq9ATtiX5Qwq8ok7gXwim7oo",
+    "liquidityVault": "7dD6bhVgWtxyQPDAuM6Vprd22K7H6xzDYdsUbg9B3KUC",
+    "collateralMint": "3SET7bMq4ScRZGjZP7NiL2hwTS7SfF9HQPwqPNVD1gL9",
+    "collateralVault": "2FMHxyV9fuHVqpBysoFFSzooMu3Epm8GKeUczFZ8adT2",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "EURC",
+    "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+    "decimals": 6,
+    "reserve": "EGPE45iPkme8G8C1xFDNZoZeHdP3aRYtaAfAQuuwrcGZ",
+    "liquidityVault": "DrZeFpbzMXmNnMqsQFngQeJiVgUpX8vaCHoJKj9FGMYv",
+    "collateralMint": "H6MFD7kvZ1qtTRtf7SpJzMFAr3wds2vKpQMokNsCfj3R",
+    "collateralVault": "B5jk5tYLx7yrzvbkEwUbVUP5uDfkVW5V9xi9ibsNWrJm",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "USDG",
+    "mint": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+    "decimals": 6,
+    "reserve": "ESCkPWKHmgNE7Msf77n9yzqJd5kQVWWGy3o5Mgxhvavp",
+    "liquidityVault": "DGBo8HmL7pBWBZLGePjHQ73JKRE37HVZ7ZbjA2FYUZHZ",
+    "collateralMint": "BG6gsv8goyoJguEbLquUZFNiZ8aGTXgo4DyH9h8z9qao",
+    "collateralVault": "BKGYpZxa2QpTSiRV7Jwc8P8cJaUQwq7maxREFFxboW6m",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "reserve mint or token program mismatch",
+    "withdrawReason": "reserve mint or token program mismatch",
+    "checks": {
+      "repayState": "reserve mint or token program mismatch",
+      "withdrawState": "reserve mint or token program mismatch",
+      "liquidity": "Mint is missing or has invalid owner/type",
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "Token-2022 requires a separate extension"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "JITOSOL",
+    "mint": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+    "decimals": 9,
+    "reserve": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW",
+    "liquidityVault": "6sga1yRArgQRqa8Darhm54EBromEpV3z8iDAvMTVYXB3",
+    "collateralMint": "9ucQp7thL38MDDTSER5ou24QnVSTZFLevDsZC1cAFkKy",
+    "collateralVault": "7y5Nko765HcZiTd2gFtxorELuJZcbQqmrmTbUVoiwGyS",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "MSOL",
+    "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+    "decimals": 9,
+    "reserve": "FBSyPnxtHKLBZ4UeeUyAnbtFuAmTHLtso9YtsqRDRWpM",
+    "liquidityVault": "CQWUdThEbNMjcoEjGyCMTGXHpKvW1aB8JF31hKa1FQQN",
+    "collateralMint": "HTHAb6CigDQXtKuYX1Tad5hoguguRnRmt6DguosVsKWC",
+    "collateralVault": "G9tjwEXduCMuz6PFwBW6o73Lu36MwhAvt2deS7o1MQaS",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "cdcSOL",
+    "mint": "CDCSoLckzozyktpAp9FWT3w92KFJVEUxAU7cNu2Jn3aX",
+    "decimals": 9,
+    "reserve": "FMbsZf4HuQ1a8a7VdmALT3S8WRfu3EocphRKPXxRsfGd",
+    "liquidityVault": "98yKLQA7QsU9ND1ejmSVbqnvfZ9TZqswtTedbfFFG1Ur",
+    "collateralMint": "5Fr7qCEhjcGRcGLqC8EGuifnPbo33pXnNt13zREyHTCx",
+    "collateralVault": "69eXDLc9p6XQbPNiZx6A3fYoFa2YUX1dkxfYVuFo6bWM",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "kSOLMSOLRaydium",
+    "mint": "3Fb5DMRWoBLWD36Lp4BtG41LaFjVeEJNCH9YLNPYdVqj",
+    "decimals": 6,
+    "reserve": "FPAwg5jadDs8AvUtvtAbit2RCZdkZES6yY5X6nCSuEw9",
+    "liquidityVault": "6kF1hRfx9nMnSnkuBtCXA2xYCcyC23omhDXJx8V6dLRG",
+    "collateralMint": "FUrDoTiCfsh6whxFZQRNWa2PYDfzRSLng9ZG59bUQ2Vh",
+    "collateralVault": "vMhkQSKX1ezV3GtiUUVTFAz49JRhFWocGcKZMuAf3B9",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "autodeleverageEnabled=1 excluded",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "bnSOL",
+    "mint": "BNso1VUJnh4zcfpZa6986Ea66P6TCp59hvtNJ8b1X85",
+    "decimals": 9,
+    "reserve": "Fqjbo3L4NAyzPcy6swv1XXLm1c7tUTKWMDkjCo9mfSDq",
+    "liquidityVault": "DvB11zGUS4RxMGNNpLD9s93N4nuNsu6Yjhg1mhoLHjgw",
+    "collateralMint": "ECGGPdi5XYSntQvdNtGQqbU8vJaZnhucgrMcGcAEx96Q",
+    "collateralVault": "7eBNYWDTwNTH1v31f9AnYVV14HjCSYfJRh57xJrsWmbK",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "STEP",
+    "mint": "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT",
+    "decimals": 9,
+    "reserve": "G31zKdH2SkDZPhmoQraep5xbTSPyk3VZxAeBdC3nmq5J",
+    "liquidityVault": "GNSVanAqJAKvT89tPqdkJoyKDti2vbEv6ZmumBZcgVQe",
+    "collateralMint": "B4qtzMZF6N755jejmNzuqFpwPTnqjc8zRXWDnTWZKHPQ",
+    "collateralVault": "DRbcT7cET77XSuSEsBKkyKnqpsdtjEVhnRZBtL48VF6F",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "status=1 (Obsolete) excluded by current operation checks",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": [
+      "zero recorded withdrawal liquidity"
+    ]
+  },
+  {
+    "symbol": "kSOLJITOSOLOrca",
+    "mint": "Dk2X1HCbwJae44P7FpqdFoeT6LEw4JVyyHvZMHUzHWbi",
+    "decimals": 6,
+    "reserve": "GFLLgX9V6PR1PzhgsGzeyUddpt2ws2PBRAxRwoLrboGp",
+    "liquidityVault": "FJVBwqhPN2KtRCC8GUkde5Ae73ov5sPKR3GNrE2eFCmy",
+    "collateralMint": "2KNot4k3xygWmByxihBZr2Fm1EHQuWQTAntkVKvh3CM1",
+    "collateralVault": "GihiPozDoSNvjuFqBsDJCdNWJeLt7x6Tgy9qN7XEYeuW",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "status=1 (Obsolete) excluded by current operation checks",
+      "autodeleverageEnabled=1 excluded",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "xSTEP",
+    "mint": "xStpgUCss9piqeFUk2iLVcvJEGhAdJxJQuwLkXP555G",
+    "decimals": 9,
+    "reserve": "Ggn9EUzL5QQPM8JPsyu1MU1uD3rGJty7iXddLQnmxPyS",
+    "liquidityVault": "AJgRcWCbY6UgTnAPUAb1RpVjHMqC54PHJJUoePL2DrZJ",
+    "collateralMint": "2vyA7u8xt3m8uESanDeRKqZbeEriQjSzVWgfRNDJQC6v",
+    "collateralVault": "HddbHWKNJcX3Z8oqWtjE7tNibw4szKuGzYg5UesbBmKJ",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": "unsupported Scope conversion chain"
+    },
+    "restrictions": [
+      "status=1 (Obsolete) excluded by current operation checks",
+      "non-Scope oracle requires a separate withdrawal extension",
+      "withdrawal oracle: unsupported Scope conversion chain"
+    ],
+    "availability": [
+      "zero recorded withdrawal liquidity"
+    ]
+  },
+  {
+    "symbol": "UXD",
+    "mint": "7kbnvuGBxxj8AG9qp8Scn56muWGaRaFqxg1FsRp3PaFT",
+    "decimals": 6,
+    "reserve": "GhGPbkWmPjSkbkgZbhNGBTxzwQKjqDpZwNfaf2gQKgdG",
+    "liquidityVault": "BD42Tzzh2DBiL4aqbNPP46MRTom451Aa2vPuHgVCrrqD",
+    "collateralMint": "G9KyXbtRmJ9KBpSVRhW5BAVK4EmNjDYjY8KTMgQ3465P",
+    "collateralVault": "6pZVptTrKfEkpZTXhKSpY53kvgXnvV66vQTEne8SUQdR",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "inactive/emergency/permissioned reserve is unsupported",
+    "withdrawReason": "inactive/emergency/permissioned reserve is unsupported",
+    "checks": {
+      "repayState": "inactive/emergency/permissioned reserve is unsupported",
+      "withdrawState": "inactive/emergency/permissioned reserve is unsupported",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "status=1 (Obsolete) excluded by current operation checks",
+      "autodeleverageEnabled=1 excluded",
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "USDT",
+    "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+    "decimals": 6,
+    "reserve": "H3t6qZ1JkguCNTi9uzVKqQ7dvt2cum4XiXWom6Gn5e5S",
+    "liquidityVault": "2Eff8Udy2G2gzNcf2619AnTx3xM4renEv4QrHKjS1o9N",
+    "collateralMint": "B8zf4kojJbwgCRKA7rLaLhRCZBGhgAJp8wPBVZZHMhSv",
+    "collateralVault": "CTCpzgNbPwWQSYamu4ZomgFuHf8DUGwq8hSYWVLurSJD",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "bSOL",
+    "mint": "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",
+    "decimals": 9,
+    "reserve": "H9vmCVd77N1HZa36eBn3UnftYmg4vQzPfm1RxabHAMER",
+    "liquidityVault": "AQeaZUp248NPCBwRuVPzCsN3DX6DsgVHyiE25z6eEeAs",
+    "collateralMint": "FtLmvJvsGW41fE7hwsp53uv2UqHakZ3QS7UBb5WoZtZg",
+    "collateralVault": "5JYgSp95BqxEAZteg7QmS2afk7pH7dvuqsqfUDorxKZb",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "jSOL",
+    "mint": "7Q2afV64in6N6SeZsAAB81TJzwDoD6zpqmHkzi9Dcavn",
+    "decimals": 9,
+    "reserve": "HD93Fq3gmVh3J7euJJ5MBw8Ph3ebeMFS699JQePN4XgN",
+    "liquidityVault": "BkCTFeGZ19hGZCo6dG4uBXEF9cC5LbTEMpKxwJUsnFFM",
+    "collateralMint": "BkwgQpQmd77FotNDgGe4j5TYP1omrzdfrdT9qr8KLZFm",
+    "collateralVault": "DUbRgdtD7oSNyzpnzLoEZaJH1ik52w2sGQoJJv7bqGsb",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "laineSOL",
+    "mint": "LAinEtNLgpmCP9Rvsf5Hn8W6EhNiKLZQti1xfWMLy6X",
+    "decimals": 9,
+    "reserve": "HMCXsf1jFUDbvGGhvUzCzwkKbmUhxhxz7gYZwXpTuReT",
+    "liquidityVault": "GBty2bfL5sS74eaERsbXuoyefjJERyANsqjutmRSh2vS",
+    "collateralMint": "9MEnMKMFNhXg2Ut2WHbpu6CqnB5XmdSZC85oHFZzExhK",
+    "collateralVault": "GamYYstwyacpNPhK7JfGFTpTNKw1U5sr1rv823Pb1ARC",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "pSOL",
+    "mint": "pSo1f9nQXWgXibFtKf7NWYxb5enAM4qfP6UJSiXRQfL",
+    "decimals": 9,
+    "reserve": "HV9KsS5mB4b9CFhDJVKdfxWBAomYfUk5PeUsdgMQsUrB",
+    "liquidityVault": "CorvqWkB9rRNQzwXXVyg52ASor8aDpFkEwaYnFhD2vnF",
+    "collateralMint": "2CZr3QJSktRmE2WqpFoyc46jWzP2ZmZHuQk4hXzC159q",
+    "collateralVault": "JB1i9Mo6SrjkwrLbLaeqfy6FPEQpnno2PfmchkGdFUAA",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "WBTC",
+    "mint": "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
+    "decimals": 8,
+    "reserve": "HYnVhjsvU1vBKTPsXs1dWe6cJeuU8E4gjoYpmwe81KzN",
+    "liquidityVault": "3y8JYyF8HPPK5YeUzxPPEvAahdPX4Z5wdZTiVc1atuQi",
+    "collateralMint": "A2MFkvvT3fhFg3DmHBzBvgxh8iF29WFjbeYSpPfLPfhb",
+    "collateralVault": "7AcWkPj1yafjgxhYCkaoxCtFapCszXeVAMnXnGuDf6AC",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "tBTC",
+    "mint": "6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU",
+    "decimals": 8,
+    "reserve": "Hcz1o77tF9TpdEHcvrx29tz7SBKoQEwJA1wuJqGZYnTw",
+    "liquidityVault": "J2Ex2efY1e9TizMrjFQqtqGTwNBx888GTctHEkWemThV",
+    "collateralMint": "37cmWYYdAC88pQ4tGBu5ae28NctvzkNYG7w9xGHNeTPc",
+    "collateralVault": "3mAggM7aVRtqSDgVpVUdDddbXxqr2pa6x6AcHDUrSMSM",
+    "repay": true,
+    "withdraw": true,
+    "repayReason": null,
+    "withdrawReason": null,
+    "checks": {
+      "repayState": null,
+      "withdrawState": null,
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [],
+    "availability": []
+  },
+  {
+    "symbol": "bonkSOL",
+    "mint": "BonK1YhkXEGLZzwtcvRTip3gAL9nCeQD7ppZBLXhtTs",
+    "decimals": 9,
+    "reserve": "Ht9NoB1udjpRqws1sCw1j2dL7MeTDHYCDdDFkbc1Arst",
+    "liquidityVault": "DdFQdzd27qYMhGeSjLXgkzfGSzr4j2hATyWkETyPvUsk",
+    "collateralMint": "B7gk3NA2pgjUzoWsURa31epTqfhvNHavMk5REEdRgTtE",
+    "collateralVault": "HSUr1aRtzAA6LDCaE4uLTsT4uu4bHuKrkAxEJ9ux81Yj",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  },
+  {
+    "symbol": "lanternSOL",
+    "mint": "LnTRntk2kTfWEY6cVB8K9649pgJbt6dJLS1Ns1GZCWg",
+    "decimals": 9,
+    "reserve": "J5oj3VKWQNKRZx3heWZx7JZC59AEDQ9UQwqqiy63nCuf",
+    "liquidityVault": "EgJnCq2QZ89JBNfxgaKob3EAKna2UgBjHHpUZx2RQig",
+    "collateralMint": "7jsboNvtyxYAoyJ2kbfzPm3eFgN5rY2SKWovGvsyfX6F",
+    "collateralVault": "34wTZDsFMqNLkNDS2ArqSDnBrBQNcEYsezEWJDTR34Yc",
+    "repay": false,
+    "withdraw": false,
+    "repayReason": "unsupported reserve collateral restrictions",
+    "withdrawReason": "unsupported reserve collateral restrictions",
+    "checks": {
+      "repayState": "unsupported reserve collateral restrictions",
+      "withdrawState": "unsupported reserve collateral restrictions",
+      "liquidity": null,
+      "collateral": null,
+      "debtFarm": null,
+      "collateralFarm": null,
+      "oracle": null
+    },
+    "restrictions": [
+      "disableUsageAsCollOutsideEmode=1 excluded"
+    ],
+    "availability": []
+  }
+]

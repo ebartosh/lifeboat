@@ -1,0 +1,47 @@
+{
+  "name": "lifeboat",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:interface": "node scripts/check-interface.mjs",
+    "build": "expo export --platform android",
+    "fixtures:runtime": "node --import tsx scripts/generate-runtime-fixture.mjs",
+    "test:integration": "vitest run --config vitest.integration.config.mts"
+  },
+  "dependencies": {
+    "@solana-mobile/mobile-wallet-adapter-protocol": "2.2.9",
+    "@solana-mobile/mobile-wallet-adapter-protocol-kit": "0.3.2",
+    "@solana/kit": "7.1.1",
+    "expo": "57.0.25",
+    "expo-clipboard": "57.0.2",
+    "expo-dev-client": "57.0.19",
+    "expo-document-picker": "57.0.2",
+    "expo-file-system": "57.0.7",
+    "expo-font": "57.0.4",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-nitro-modules": "0.37.1",
+    "react-native-quick-crypto": "1.1.7",
+    "react-native-safe-area-context": "5.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.3",
+    "@types/react": "19.2.2",
+    "esbuild": "0.27.4",
+    "playwright-core": "1.58.2",
+    "react-dom": "19.2.3",
+    "react-native-web": "0.21.2",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}

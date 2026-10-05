@@ -1,0 +1,8 @@
+{
+  "protocol":"kamino",
+  "displayName":"Kamino Lending",
+  "actions":[
+    {"id":"repay", "label":"Repay debt", "instruction":"repayObligationLiquidityV2", "description":"Repay locally pinned main-market debt after interest-only reserve and obligation refresh, using the wallet ATA or atomically wrapped native SOL for WSOL"},
+    {"id":"withdraw", "label":"Withdraw collateral", "instruction":"withdrawObligationCollateralAndRedeemReserveCollateralV2", "description":"Redeem permitted locally pinned main-market collateral to the wallet ATA after Scope chain and position refresh"}
+  ]
+}
