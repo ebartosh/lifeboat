@@ -46,6 +46,11 @@ const results = [];
 try {
   browser = await chromium.launch({ executablePath, headless: true });
   const page = await browser.newPage({ viewport: { width: 360, height: 800 } });
+  await page.route('https://api.mainnet.solana.com/**', route => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ jsonrpc: '2.0', id: route.request().postDataJSON()?.id,
+      error: { code: -32000, message: 'Offline interface fixture' } }),
+  }));
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   async function open(scenario, scale = 1, width = 360, height = 800) {
@@ -72,10 +77,33 @@ try {
     results.push(name);
   }
   for (const scale of [1,1.3,2]) {
-    for (const scenario of ['no-wallet','ore','loading','empty','error','kamino','review','unknown','meteora','meteora-loading','meteora-empty','meteora-error','meteora-review','meteora-partial','meteora-unknown']) {
+    for (const scenario of ['no-wallet','ore','loading','empty','error','expired','kamino','review','wallet-review','wallet-check','wallet-check-busy','unknown','meteora','meteora-loading','meteora-empty','meteora-error','meteora-expired','meteora-review','meteora-wallet-review','meteora-partial','meteora-unknown','meteora-transfer-fees','meteora-transfer-fees-review']) {
       await open(scenario, scale); await check(`${scenario}-360-${scale}`);
     }
   }
+  await open('meteora-transfer-fees-review',2);
+  await page.getByText(/Gross transfer:.*Withheld transfer fee:/).waitFor();
+  await page.getByText(/^Future transfer fees.*Withheld fees are unavailable to spend/).waitFor();
+  await page.getByText(/Gross transfer:.*Withheld transfer fee:/).scrollIntoViewIfNeeded();
+  await check('meteora-transfer-fees-review-fee-2');
+  await open('expired',2);
+  await page.getByText(/Transaction expired\. Nothing was sent/).waitFor();
+  await page.getByText(/Check the details before approving/).waitFor();
+  await page.getByRole('button',{name:'Close',exact:true}).click();
+  await page.getByRole('button',{name:'Operation details',exact:true}).click();
+  await page.getByText(/without long pauses/).waitFor();
+  await open('meteora-expired',2);
+  await page.getByText(/This step expired before sending\. Confirmed steps are kept/).waitFor();
+  await page.getByRole('button',{name:'Resume withdrawal',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['resume']);
+  await open('wallet-check',2);
+  await page.getByRole('button',{name:'Sign memo without sending',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['memo-check']);
+  await page.getByText('Memo signature verified. Nothing was sent, and no network fee was paid.',{exact:true}).waitFor();
+  await check('wallet-check-success-2');
+  await open('wallet-check-busy');
+  assert.equal(await page.getByRole('button',{name:'Sign memo without sending',exact:true}).isDisabled(),true);
+  assert.equal(await page.getByRole('button',{name:'Back',exact:true}).count(),0);
   await open('ore',1,900); await check('ore-wide');
   await open('ore',2,900); await check('ore-wide-2');
   await open('meteora',1,900); await check('meteora-wide');
@@ -108,9 +136,53 @@ try {
   await page.getByRole('button',{name:'Check status',exact:true}).click();
   assert.deepEqual(await page.evaluate(()=>window.calls),['check']);
   await open('no-wallet');
-  await page.getByRole('button', { name: 'Fonts and license', exact: true }).click();
-  await page.getByText(/Copyright.*IBM Corp/).waitFor();
-  await check('font-license');
+  assert.equal(await page.getByText('MAINNET', { exact: true }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Fonts and license', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Connect', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Refresh', exact: true }).isDisabled(), true);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
+    await page.getByText('External wallet connected.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Wallet details', exact: true }).click();
+    await page.getByRole('button', { name: 'Disconnect wallet', exact: true }).click();
+    await page.getByText('Wallet not connected', { exact: true }).waitFor();
+  }
+  assert.deepEqual(await page.evaluate(() => window.walletCalls), ['connect','disconnect','connect','disconnect']);
+  await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
+  await page.getByText('External wallet connected.', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Switch wallet', exact: true }).count(), 0);
+  const walletButton = await page.getByRole('button', { name: 'Wallet details', exact: true }).boundingBox();
+  const refreshButton = await page.getByRole('button', { name: 'Refresh', exact: true }).boundingBox();
+  const title = await page.getByText('Lifeboat', { exact: true }).first().boundingBox();
+  assert.ok(walletButton.x > title.x && refreshButton.x > walletButton.x, 'Wallet and refresh commands belong at the upper right');
+  assert.equal(walletButton.y, refreshButton.y, 'Refresh must be next to the wallet command');
+  assert.ok(walletButton.y < title.y + title.height, 'Commands must share the masthead at normal text size');
+  assert.equal((await page.getByRole('button', { name: 'Refresh', exact: true }).textContent()).trim(), '↻');
+  let rpcRequests = 0;
+  const countRpc = request => { if (request.url().startsWith('https://api.mainnet.solana.com')) rpcRequests++; };
+  page.on('request', countRpc);
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
+  assert.ok(rpcRequests > 0, 'Header refresh must reload positions');
+  page.off('request', countRpc);
+  await check('connected-wallet-header');
+  await page.evaluate(() => { window.cancelNextWalletConnection = true; });
+  await page.getByRole('button', { name: 'Wallet details', exact: true }).click();
+  await page.getByRole('button', { name: 'Switch wallet', exact: true }).click();
+  await page.getByText(/Could not connect the wallet/).waitFor();
+  await page.getByRole('button', { name: 'Wallet details', exact: true }).click();
+  await page.getByText('External wallet', { exact: true }).waitFor();
+  assert.equal(await page.getByText(/Import JSON|Local key|Delete local key|Key saved on device/).count(), 0);
+  assert.deepEqual(await page.evaluate(() => window.walletCalls), ['connect','disconnect','connect','disconnect','connect','connect']);
+  await check('external-wallet-details');
+  for (const scale of [1, 1.3, 2]) {
+    await open('no-wallet', scale);
+    await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
+    await page.getByText('External wallet connected.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
+    await check(`app-connected-header-360-${scale}`);
+  }
   await open('ore');
   await page.getByRole('button', { name: 'ORE rewards. Rewards.' }).click();
   assert.deepEqual(await page.evaluate(() => window.calls), [], 'Selection must not run an operation');
@@ -146,6 +218,14 @@ try {
   await page.getByRole('button', { name: 'Sign and send', exact: true }).click();
   assert.equal(await page.getByRole('button', { name: 'Sign and send', exact: true }).count(), 0);
   await check('sending-2');
+  await open('wallet-review',2);
+  await page.getByText('Priority fee included above: 0.000024 SOL', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Sign and send', exact: true }).count(), 0);
+  await page.getByRole('button', { name: 'Send transaction', exact: true }).scrollIntoViewIfNeeded();
+  await check('wallet-review-actions-2');
+  await page.getByRole('button', { name: 'Send transaction', exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => window.calls), [true]);
+  assert.equal(await page.getByRole('button', { name: 'Send transaction', exact: true }).count(), 0);
   await open('unknown');
   await page.getByRole('button', { name: 'Check status', exact: true }).click();
   assert.deepEqual(await page.evaluate(() => window.calls), ['check']);

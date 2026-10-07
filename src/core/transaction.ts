@@ -7,7 +7,6 @@ import {
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
-  signTransaction,
   partiallySignTransaction,
   getSignatureFromTransaction,
   type Instruction,
@@ -20,7 +19,8 @@ import {
 import { errorMessage, SimulationError, TransactionError } from "./errors";
 import type { SimulationResult, TransactionRpc } from "./rpc";
 import { startTransactionTrace } from './transaction-diagnostics';
-import { checkSignedTransaction } from './signed-transaction';
+import { checkSignedTransaction, checkTransactionSignatures } from './signed-transaction';
+import { validateWalletTransactionChanges, type WalletTransactionChanges } from './wallet-transaction-policy';
 
 export type SafeTransactionResult =
   | { status: "cancelled" }
@@ -29,8 +29,7 @@ export type SafeTransactionResult =
 export type SafeTransactionOptions = {
   rpc: TransactionRpc;
   wallet: Address;
-  getSigner?: () => Promise<KeyPairSigner>;
-  signWithWallet?: (unsigned: Transaction) => Promise<Transaction>;
+  signWithWallet: (unsigned: Transaction) => Promise<Transaction>;
   additionalSigners?: readonly KeyPairSigner[];
   instruction?: Instruction;
   instructions?: readonly Instruction[];
@@ -56,12 +55,15 @@ export type PendingTransactionIdentity = {
 
 export class OnChainFailure extends TransactionError {}
 export class NotSentError extends TransactionError {}
+/** The lifetime ended before any submission attempt; a new preparation is safe. */
+export class UnsentTransactionExpiredError extends TransactionError {}
 
 export type TransactionReview = {
   wallet: Address;
   simulation: SimulationResult;
   feeLamports: bigint | null;
   lastValidBlockHeight: bigint;
+  walletChanges?: WalletTransactionChanges;
 };
 
 function copyTransaction(transaction: Transaction): Transaction {
@@ -85,12 +87,12 @@ export async function executeSafeTransaction(options: SafeTransactionOptions): P
 
 async function executeTracedTransaction(options: SafeTransactionOptions, trace: ReturnType<typeof startTransactionTrace>): Promise<SafeTransactionResult> {
   // Capture execution context before yielding to caller callbacks.
-  const { rpc, wallet, getSigner, signWithWallet, confirm } = options;
+  const { rpc, wallet, signWithWallet, confirm } = options;
   const additionalSigners = options.additionalSigners ?? [];
   const assertActive = options.assertActive ?? (() => {});
   assertActive();
-  if ((getSigner === undefined) === (signWithWallet === undefined)) {
-    throw new TransactionError('Supply exactly one signing method');
+  if (typeof signWithWallet !== 'function') {
+    throw new TransactionError('An external wallet signing method is required');
   }
   if ((options.instruction === undefined) === (options.instructions === undefined)) {
     throw new TransactionError("Supply exactly one instruction or one instruction list");
@@ -158,41 +160,73 @@ async function executeTracedTransaction(options: SafeTransactionOptions, trace: 
   trace.event('pre-sign-height');
   const currentBlockHeight = await rpc.getBlockHeight();
   if (currentBlockHeight > blockhash.lastValidBlockHeight) {
-    throw new TransactionError("The simulated transaction blockhash expired before signing; prepare and confirm again");
+    throw new UnsentTransactionExpiredError("The simulated transaction blockhash expired before signing; prepare and confirm again");
   }
 
   let signedTransaction;
   trace.event('signing-start');
   try {
     assertActive();
-    if (getSigner) {
-      const signer = await getSigner();
-      assertActive();
-      if (signer.address !== wallet) throw new TransactionError('Signing wallet changed; prepare and confirm again');
-      signedTransaction = await signTransaction([signer.keyPair, ...additionalSigners.map(extra => extra.keyPair)], unsignedTransaction);
-    } else {
-      const partlySigned = additionalSigners.length
-        ? await partiallySignTransaction(additionalSigners.map(extra => extra.keyPair), unsignedTransaction)
-        : copyTransaction(unsignedTransaction);
-      signedTransaction = await signWithWallet!(copyTransaction(partlySigned));
-      assertActive();
-    }
+    const partlySigned = additionalSigners.length
+      ? await partiallySignTransaction(additionalSigners.map(extra => extra.keyPair), unsignedTransaction)
+      : copyTransaction(unsignedTransaction);
+    signedTransaction = await signWithWallet(copyTransaction(partlySigned));
+    assertActive();
   } catch (error) {
     throw new TransactionError(`Transaction signing failed: ${errorMessage(error)}`, { cause: error });
   }
   trace.event('signing-result');
   trace.event('signature-validation');
   if (signedTransaction) trace.messageShape('returned', signedTransaction);
-  const signatureFailure = await checkSignedTransaction(unsignedTransaction, signedTransaction, expectedSigners);
+  let signatureFailure = await checkSignedTransaction(unsignedTransaction, signedTransaction, expectedSigners);
+  const walletChanges = signedTransaction && (signatureFailure === 'message-length' || signatureFailure === 'message-bytes')
+    ? validateWalletTransactionChanges(unsignedTransaction, signedTransaction) : null;
+  if (walletChanges) {
+    trace.instructionDetails(unsignedTransaction, signedTransaction);
+    // A wallet changing compute/guard instructions invalidates signatures from temporary
+    // accounts. Re-sign only the application's configured temporary keys after policy checks.
+    if (additionalSigners.length) signedTransaction = await partiallySignTransaction(additionalSigners.map(extra => extra.keyPair), signedTransaction);
+    signatureFailure = await checkTransactionSignatures(signedTransaction, expectedSigners);
+  }
   if (signatureFailure) {
+    if (signedTransaction && (signatureFailure === 'message-length' || signatureFailure === 'message-bytes')) {
+      trace.instructionDetails(unsignedTransaction, signedTransaction);
+    }
     trace.signatureRejected(signatureFailure);
     throw new TransactionError(`Signed transaction message or signature is invalid (${signatureFailure})`);
   }
   trace.event('post-sign-height');
   if (await rpc.getBlockHeight() > blockhash.lastValidBlockHeight) {
-    throw new TransactionError('The simulated transaction blockhash expired before sending; prepare and confirm again');
+    throw new UnsentTransactionExpiredError('The simulated transaction blockhash expired before sending; prepare and confirm again');
   }
   assertActive();
+  if (walletChanges) {
+    trace.event('wallet-simulation-start');
+    await options.beforeSimulation?.(copyTransaction(signedTransaction));
+    let returnedSimulation: SimulationResult;
+    try { returnedSimulation = await rpc.simulateTransaction(copyTransaction(signedTransaction), options.simulationAccounts); }
+    catch (error) { throw new SimulationError(`Wallet transaction simulation RPC request failed: ${errorMessage(error)}`, { cause: error }); }
+    if (returnedSimulation.error !== null) {
+      trace.programError(returnedSimulation.error);
+      throw new SimulationError('Wallet transaction simulation failed; nothing was sent');
+    }
+    if (walletChanges.computeUnitLimit !== null && returnedSimulation.unitsConsumed !== undefined
+      && returnedSimulation.unitsConsumed > BigInt(walletChanges.computeUnitLimit)) {
+      throw new SimulationError('Wallet transaction exceeded its compute limit; nothing was sent');
+    }
+    trace.event('wallet-simulation-validation');
+    await options.validateSimulation?.(returnedSimulation);
+    const feeLamports = await rpc.getTransactionFee?.(copyTransaction(signedTransaction));
+    if (feeLamports == null || feeLamports < 0n) throw new TransactionError('Could not determine the wallet transaction fee; nothing was sent');
+    if (feeLamports < walletChanges.priorityFeeLamports) throw new TransactionError('Wallet transaction fee estimate is inconsistent; nothing was sent');
+    const updatedReview: TransactionReview = { ...review, simulation: returnedSimulation, feeLamports, walletChanges };
+    options.onSimulated?.(updatedReview);
+    assertActive();
+    trace.event('wallet-review-wait');
+    if (!await confirm(updatedReview)) { trace.event('cancelled'); return { status: 'cancelled' }; }
+    assertActive();
+    trace.event('wallet-review-approved');
+  }
   const signature = getSignatureFromTransaction(signedTransaction);
   try {
     trace.event('pending-save');
@@ -201,7 +235,7 @@ async function executeTracedTransaction(options: SafeTransactionOptions, trace: 
     assertActive();
     trace.event('pre-send-height');
     if (await rpc.getBlockHeight() > blockhash.lastValidBlockHeight) {
-      throw new TransactionError('The simulated transaction blockhash expired before sending; prepare and confirm again');
+      throw new UnsentTransactionExpiredError('The simulated transaction blockhash expired before sending; prepare and confirm again');
     }
     assertActive();
   } catch (error) {

@@ -14,7 +14,7 @@ export type MeteoraReview = TransactionReview & {
   step: WithdrawalStep; completedSteps: number; remainingSteps: number; receipts: Receipt[]; remainingReceipts: Receipt[];
   ataRent: bigint; remainingAtaRent: bigint; rentRefund: bigint;
 };
-export type MeteoraExecutionInput = Pick<SafeTransactionOptions,'wallet'|'getSigner'|'signWithWallet'|'assertActive'> & {
+export type MeteoraExecutionInput = Pick<SafeTransactionOptions,'wallet'|'signWithWallet'|'assertActive'> & {
   operation: MeteoraOperation;
   confirm(review: MeteoraReview): Promise<boolean>;
   beforeSend(identity: PendingTransactionIdentity, step: WithdrawalStep): Promise<void>;
@@ -44,7 +44,7 @@ export async function executeMeteoraWithRpc(rpc: MeteoraRpc, input: MeteoraExecu
     }
     check(!operation.completed.some(c => c.step.id === plan.step.id), 'confirmed step effects are not visible; continuation is blocked');
     input.progress?.(operation);
-    const result = await executeStep({rpc,wallet:input.wallet,getSigner:input.getSigner,signWithWallet:input.signWithWallet,
+    const result = await executeStep({rpc,wallet:input.wallet,signWithWallet:input.signWithWallet,
       assertActive:input.assertActive,instructions:plan.instructions,simulationAccounts:plan.simulationAccounts,
       validateSimulation:plan.validateSimulation,
       confirm:review => input.confirm({...review,action:'meteora-withdraw-all',operationId:operation.id,position:operation.position,

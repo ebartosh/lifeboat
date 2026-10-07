@@ -17,11 +17,11 @@ for(const item of found.accounts.slice(0,5)) {
   try {
     const state=decodePosition(item.account),plan=await prepareWithdrawAll({rpc,wallet:state.owner,position:item.address,minSlot:found.slot});
     if(!plan)continue;
-    const result=await executeSafeTransaction({rpc,wallet:state.owner,getSigner:async()=>{throw new Error('Signing disabled');},
+    const result=await executeSafeTransaction({rpc,wallet:state.owner,signWithWallet:async()=>{throw new Error('Signing disabled');},
       instructions:plan.instructions,simulationAccounts:plan.simulationAccounts,validateSimulation:plan.validateSimulation,
       confirm:async review=>{attempts.push({position:item.address,kind:plan.step.kind,bins:[plan.step.lower,plan.step.upper],
         unitsConsumed:review.simulation.unitsConsumed?.toString(),feeLamports:review.feeLamports?.toString(),
-        receipts:plan.receipts.map(t=>({mint:t.mint,amount:t.amount.toString()})),snapshotSlot:review.simulation.snapshot.slot.toString()});return false;}});
+        receipts:plan.receipts.map(t=>({mint:t.mint,tokenProgram:t.token.program,grossAmount:t.grossAmount.toString(),transferFee:t.transferFee.toString(),netAmount:t.amount.toString()})),snapshotSlot:review.simulation.snapshot.slot.toString()});return false;}});
     if(result.status!=='cancelled')throw new Error('Unexpected execution result');
     await writeFile('.cache/meteora-mainnet-simulation.json',JSON.stringify({unsigned:true,submitted:false,attempts},null,2));
     console.log(`Unsigned mainnet simulation passed: ${plan.step.kind}, ${plan.step.lower}..${plan.step.upper}; no signature or submission.`);

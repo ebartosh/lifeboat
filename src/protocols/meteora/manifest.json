@@ -3,6 +3,13 @@
   "name": "Meteora DLMM",
   "network": "mainnet-beta",
   "actions": [{ "id": "withdraw-all", "label": "Withdraw all", "description": "Remove all liquidity from the selected position, claim fees and rewards, then close the empty position." }],
-  "supported": "PositionV2 and ordinary SPL Token; recipient is the connected owner wallet; WSOL stays wrapped",
-  "excluded": ["Token-2022", "legacy positions", "active locks", "separate fee recipients", "DAMM", "swaps", "wallet-wide withdrawal"]
+  "supported": "PositionV2 with ordinary SPL Token or the listed Token-2022 extensions, including mixed pairs and rewards; recipient is the connected owner wallet; WSOL stays wrapped",
+  "token2022": {
+    "mintExtensions": ["TransferFeeConfig", "MetadataPointer", "TokenMetadata"],
+    "accountExtensions": ["TransferFeeAmount", "ImmutableOwner"],
+    "extensionFreeMints": true,
+    "unknownExtensions": "rejected",
+    "receipt": "spendable net amount after per-transfer, epoch-specific fees; withheld fees are excluded"
+  },
+  "excluded": ["all unlisted mint/account extensions", "active or inactive transfer hooks", "native Token-2022 mint", "legacy positions", "active locks", "separate fee recipients", "DAMM", "swaps", "wallet-wide withdrawal"]
 }

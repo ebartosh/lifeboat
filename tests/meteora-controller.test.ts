@@ -1,3 +1,4 @@
+import { testWalletSigning } from './fixtures/signer';
 import { address, getSignatureFromTransaction, signTransaction } from '@solana/kit';
 import { describe, expect, it, vi } from 'vitest';
 import { ClaimController, type ClaimState } from '../src/mobile/claim-controller';
@@ -18,7 +19,7 @@ async function setup(options:Parameters<typeof meteoraFixture>[0]={width:1}) {
     status:vi.fn(async()=>f.rpc.getSignatureStatus()),height:vi.fn(async()=>f.rpc.getBlockHeight())
   } satisfies ConstructorParameters<typeof ClaimController>[0];
   let controller=new ClaimController(deps,s=>states.push(s));await controller.restore();
-  const start=()=>controller.startMeteora('https://example.com',f.signer.address,POSITION,{getSigner:async()=>f.signer});
+  const start=()=>controller.startMeteora('https://example.com',f.signer.address,POSITION,{signWithWallet: testWalletSigning(f.signer)});
   const review=async()=>vi.waitFor(()=>expect(states.at(-1)?.phase).toBe('review'));
   const approveAll=async(promise:Promise<void>)=>{
     let done=false;void promise.finally(()=>{done=true;});
@@ -50,12 +51,21 @@ describe('durable Meteora controller',()=>{
     expect(f.states.at(-1)?.phase).toBe('partial');await f.restart();expect(f.states.at(-1)?.phase).toBe('partial');
     await f.approveAll(f.start());expect(f.rpc.sent).toHaveLength(3);expect(f.states.at(-1)?.phase).toBe('confirmed');
   });
+  it('restores Token-2022 unknown results and resumes only after signature resolution',async()=>{
+    const f=await setup({width:1,token2022:true,reward:true,reward2022:true,transferFee:true,missingAta:true});
+    f.rpc.status=null;await f.approveAll(f.start());expect(f.states.at(-1)?.phase).toBe('unknown');
+    await f.restart();expect(f.controller.locked).toBe(true);await f.start();expect(f.rpc.sent).toHaveLength(1);
+    f.rpc.status={confirmationStatus:'confirmed',error:null,slot:100n};await f.controller.check();
+    expect((await f.store.loadMeteora!())?.completed).toHaveLength(1);
+    await f.approveAll(f.start());expect(f.states.at(-1)?.phase).toBe('confirmed');
+    expect(f.rpc.sent).toHaveLength(4);expect(await f.store.loadMeteora!()).toBeNull();
+  });
   it('blocks unknown signatures after expiry, RPC failure, wallet change and restart',async()=>{
     const f=await setup();f.rpc.sendError=true;await f.approveAll(f.start());
     expect(f.states.at(-1)?.phase).toBe('unknown');expect(f.rpc.sent).toHaveLength(1);
     f.rpc.status=null;f.rpc.height=101n;await f.restart();await f.controller.check();
     expect(f.states.at(-1)?.message).toMatch(/does not prove/);expect(f.controller.locked).toBe(true);
-    await f.controller.startMeteora('https://example.com',address('11111111111111111111111111111113'),POSITION,{getSigner:async()=>f.signer});
+    await f.controller.startMeteora('https://example.com',address('11111111111111111111111111111113'),POSITION,{signWithWallet: testWalletSigning(f.signer)});
     await f.start();expect(f.rpc.sent).toHaveLength(1);
     f.deps.status.mockRejectedValueOnce(new Error('RPC down'));await f.controller.check();expect(f.states.at(-1)?.phase).toBe('unknown');
     expect(await f.store.load()).not.toBeNull();
@@ -105,6 +115,19 @@ describe('durable Meteora controller',()=>{
   });
   it('stops an expired pre-signature blockhash without sending or creating a pending signature',async()=>{
     const f=await setup();const running=f.start();await f.review();f.rpc.height=101n;f.controller.answer(true);await running;
-    expect(f.rpc.sent).toHaveLength(0);expect(await f.store.load()).toBeNull();expect(f.states.at(-1)?.message).toMatch(/expired before signing/);
+    expect(f.rpc.sent).toHaveLength(0);expect(await f.store.load()).toBeNull();
+    expect(f.states.at(-1)?.message).toMatch(/This step expired before sending/);
+    expect(f.states.at(-1)?.message).toContain('Resume the withdrawal');
+    expect(f.states.at(-1)?.message).toContain('without long pauses');
+  });
+  it('keeps confirmed progress when the next step expires and explains how to resume',async()=>{
+    const f=await setup();const running=f.start();await f.review();f.controller.answer(true);
+    await vi.waitFor(()=>expect(f.states.at(-1)?.operation?.completed).toHaveLength(1));
+    await f.review();f.rpc.height=101n;f.controller.answer(true);await running;
+    expect(f.rpc.sent).toHaveLength(1);expect(await f.store.load()).toBeNull();
+    expect((await f.store.loadMeteora!())?.completed).toHaveLength(1);
+    expect(f.states.at(-1)?.phase).toBe('partial');
+    expect(f.states.at(-1)?.message).toContain('Confirmed steps are kept. Resume the withdrawal');
+    expect(f.states.at(-1)?.message).not.toContain('Nothing was sent');
   });
 });

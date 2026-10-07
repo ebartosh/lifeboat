@@ -1,5 +1,7 @@
 # lifeboat-cli migration plan for React Native
 
+> Historical plan: the JSON keypair import and local wallet signing described below were superseded on October 6, 2026. Lifeboat now connects and signs through external MWA wallets only. Previously saved local keys are left untouched and unused. Current behavior is documented in [Wallets and RPC](wallet-and-rpc.md).
+
 This document records the original ORE migration. The later Kamino migration is
 covered in a [separate plan](kamino-mobile-plan.md); statements excluding Kamino
 apply only to the earlier stage.

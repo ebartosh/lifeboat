@@ -44,8 +44,7 @@ export async function readKaminoPositions(url: string, wallet: Address): Promise
 
 export async function executeKamino(url: string, request: KaminoRequest, input: {
   wallet: Address;
-  getSigner?: SafeTransactionOptions['getSigner'];
-  signWithWallet?: SafeTransactionOptions['signWithWallet'];
+  signWithWallet: SafeTransactionOptions['signWithWallet'];
   confirm: (review: KaminoReview) => Promise<boolean>;
   assertActive?: SafeTransactionOptions['assertActive'];
   beforeSend?: SafeTransactionOptions['beforeSend'];

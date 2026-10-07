@@ -6,7 +6,7 @@ import type { LocalFile } from '../src/mobile/storage';
 async function setup() {
   const signer = await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(3));
   const connection: ExternalConnection = { version: 1, address: signer.address, authToken: 'test-token' };
-  const files = new Map<LocalFile, string>([['wallet.json', '[1,2,3]']]);
+  const files = new Map<string, string>([['wallet.json', '[1,2,3]']]);
   const io = {
     read: vi.fn(async (name: LocalFile) => files.get(name) ?? null),
     write: vi.fn(async (name: LocalFile, value: string) => { files.set(name, value); }),
@@ -21,11 +21,38 @@ async function setup() {
 }
 
 describe('external wallet authorization', () => {
-  it('removes the imported key on connection and restores the address', async () => {
+  it('restores external authorization without accessing the legacy local key', async () => {
     const f = await setup();
+    expect(await f.wallet.read()).toBeNull();
     await expect(f.wallet.connect()).resolves.toEqual(f.connection);
-    expect(f.files.has('wallet.json')).toBe(false);
+    expect(await new ExternalWallet(f.io, f.adapter).read()).toEqual(f.connection);
+    expect(f.files.get('wallet.json')).toBe('[1,2,3]');
+    expect(f.io.read).not.toHaveBeenCalledWith('wallet.json');
+    expect(f.io.write).not.toHaveBeenCalledWith('wallet.json', expect.anything());
+    expect(f.io.remove).not.toHaveBeenCalled();
     expect(await f.wallet.read()).toEqual(f.connection);
+  });
+  it('never reads or deletes a legacy key through signing, cancellation, disconnect or forget', async () => {
+    const f = await setup();
+    f.files.set('wallet.json', 'corrupt legacy key');
+    f.files.set('wallet.json.tmp', 'interrupted legacy write');
+    f.files.set('pending.json', 'existing pending record');
+    await f.wallet.connect();
+    await f.wallet.sign(f.signer.address, {} as Transaction);
+    vi.mocked(f.adapter.connect).mockRejectedValueOnce(new Error('Connection cancelled'));
+    await expect(f.wallet.connect()).rejects.toThrow('cancelled');
+    expect(await f.wallet.read()).toEqual(f.connection);
+    await f.wallet.disconnect();
+    await f.wallet.forget();
+    expect(await f.wallet.read()).toBeNull();
+    expect(f.files.get('wallet.json')).toBe('corrupt legacy key');
+    expect(f.files.get('wallet.json.tmp')).toBe('interrupted legacy write');
+    expect(f.files.get('pending.json')).toBe('existing pending record');
+    for (const name of ['wallet.json', 'wallet.json.tmp']) {
+      expect(f.io.read).not.toHaveBeenCalledWith(name);
+      expect(f.io.write).not.toHaveBeenCalledWith(name, expect.anything());
+      expect(f.io.remove).not.toHaveBeenCalledWith(name);
+    }
   });
   it('does not sign with a different or missing connected account', async () => {
     const f = await setup();
@@ -36,11 +63,13 @@ describe('external wallet authorization', () => {
     await f.wallet.disconnect();
     expect(await f.wallet.read()).toBeNull();
   });
-  it('does not keep the external connection if deleting the local key fails', async () => {
+  it('does not report a successful connection if saving authorization fails', async () => {
     const f = await setup();
-    f.io.remove.mockRejectedValueOnce(new Error('disk error'));
+    f.io.write.mockRejectedValueOnce(new Error('disk error'));
     await expect(f.wallet.connect()).rejects.toThrow(/disk error/);
     expect(f.files.has('external-wallet.json')).toBe(false);
+    expect(f.files.get('wallet.json')).toBe('[1,2,3]');
+    expect(f.io.remove).not.toHaveBeenCalled();
   });
   it('persists a renewed authorization after signing for the same account', async () => {
     const f = await setup();

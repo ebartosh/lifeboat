@@ -1,21 +1,37 @@
+# Dependencies and local development caches
 node_modules/
 .expo/
 .pnpm-store/
 .cache/
-dist/
+
+# Generated builds and reports
 android/
+dist/
 artifacts/
 coverage/
 *.apk
 *.aab
 *.tsbuildinfo
 *.log
+*.hprof
+
+# Local environment and Android signing material
 .env
 .env.*
 !.env.example
 *.jks
 *.keystore
 local.properties
+
+# Device app-data copies, including interrupted writes and backups
+lifeboat-wallet.json*
+lifeboat-external-wallet.json*
+lifeboat-pending.json*
+lifeboat-meteora-operation.json*
+lifeboat-rpc.txt*
+
+# IDE and operating system files
 .idea/
+*.iml
 .DS_Store
 Thumbs.db

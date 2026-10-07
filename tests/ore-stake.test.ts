@@ -1,3 +1,4 @@
+import { testWalletSigning } from './fixtures/signer';
 import { AccountRole, address, blockhash, getSignatureFromTransaction, type Address, type Transaction } from '@solana/kit';
 import { describe, expect, it, vi } from 'vitest';
 import { buildWithdraw, oreAta, parseOreAmount, readStakePosition, stakePda, STAKE_PROGRAM, ORE_MINT } from '../src/protocols/ore-stake';
@@ -56,27 +57,27 @@ describe('ore-stake Withdraw', () => {
   });
   it('checks fresh balance and never signs when insufficient', async () => {
     const f = await setup(1n);
-    const getSigner = vi.fn(async () => f.signer);
-    await expect(unstakeOre({ rpc: f.rpc, wallet: f.wallet, amount: '1', getSigner,
+    const signWithWallet = vi.fn(testWalletSigning(f.signer));
+    await expect(unstakeOre({ rpc: f.rpc, wallet: f.wallet, amount: '1', signWithWallet,
       confirm: async () => true })).rejects.toThrow('Insufficient');
     expect(f.rpc.getLatestBlockhash).not.toHaveBeenCalled();
-    expect(getSigner).not.toHaveBeenCalled();
+    expect(signWithWallet).not.toHaveBeenCalled();
   });
   it('cancels after simulation without signer or send', async () => {
-    const f = await setup(); const getSigner = vi.fn(async () => f.signer);
-    const result = await unstakeOre({ rpc: f.rpc, wallet: f.wallet, amount: '1', getSigner,
+    const f = await setup(); const signWithWallet = vi.fn(testWalletSigning(f.signer));
+    const result = await unstakeOre({ rpc: f.rpc, wallet: f.wallet, amount: '1', signWithWallet,
       confirm: async review => {
         expect(review).toMatchObject({ amount: 100_000_000_000n, recipient: f.recipient,
           wallet: f.wallet, feeLamports: 5000n, recipientExists: false });
         return false;
       } });
     expect(result.status).toBe('cancelled');
-    expect(getSigner).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
+    expect(signWithWallet).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
   });
   it('simulation error never reaches approval or send', async () => {
     const f = await setup(); const confirm = vi.fn(async () => true);
     f.rpc.simulateTransaction.mockResolvedValue({ error: 'failure', logs: [] });
-    await expect(unstakeOre({ rpc: f.rpc, wallet: f.wallet, amount: '1', getSigner: async () => f.signer, confirm })).rejects.toThrow('simulation failed');
+    await expect(unstakeOre({ rpc: f.rpc, wallet: f.wallet, amount: '1', signWithWallet: testWalletSigning(f.signer), confirm })).rejects.toThrow('simulation failed');
     expect(confirm).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
   });
 });

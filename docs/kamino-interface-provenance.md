@@ -1,8 +1,10 @@
 # Kamino Lending interface provenance
 
 This document was copied from the neighboring `Lifeboat-cli` with the local
-interfaces. References to `scripts/bundle-kamino*.mjs` concern the original CLI;
-they are not run by the mobile app.
+interfaces. CLI maintenance commands, test filenames and `--reserve` arguments
+below record the original source audit; they are not mobile-project instructions.
+Use [Kamino operations](kamino-operations.md) for current mobile behavior and the
+[development guide](development.md) for checks and builds.
 
 Verified 2026-09-27. This is a locally normalized subset of the upstream Anchor
 IDL, with locally reconstructed support layouts. It is not a new official IDL,
@@ -319,10 +321,10 @@ dependency checks follow the same farm selection. Withdrawal retains its full
 account graph and validations; status can also report repayment candidates.
 Offline dependency tests model RPC results, not BPF execution.
 
-See the [minimal repayment path source audit](kamino-minimal-repay-path.md) for
-the distinction between mandatory state refresh and optional price updates,
-conditional accounts, and MVP restrictions. Its
-`refreshReservesBatch(skipPriceUpdates=true)` path is now implemented for repayment.
+The [price-free repayment refresh audit](#price-free-repayment-refresh-2026-09-28)
+and repayment graph checks above record the distinction between mandatory state
+refresh and optional price updates, conditional accounts, and MVP restrictions.
+The `refreshReservesBatch(skipPriceUpdates=true)` path is implemented for repayment.
 
 KLend Fraction is unsigned U68F60 (`SF = 2^60`). BigFractionBytes contains four
 little-endian u64 limbs. Cached obligation debt scales by
@@ -432,9 +434,9 @@ are unchanged. No lookup tables were added; legacy transaction size limits remai
 
 ### Operation-specific MVP regression coverage (2026-09-28)
 
-The working rules in AGENTS.md and the [Kamino guide](kamino.md) distinguish
-repayment from withdrawal, including the one-simulation ATA path and two-simulation
-native SOL/withdrawal paths. This documentation update changes no bundled interface,
+The original CLI working rules distinguish repayment from withdrawal, including
+the one-simulation ATA path and two-simulation native SOL/withdrawal paths. The
+current mobile entry points are described in [Kamino operations](kamino-operations.md). This documentation update changes no bundled interface,
 source pin, program ID or runtime validation.
 
 `tests/kamino-mvp-regression.test.ts` combines unlisted collateral, unavailable Scope,

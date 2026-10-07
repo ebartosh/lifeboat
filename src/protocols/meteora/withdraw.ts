@@ -1,12 +1,15 @@
 import type { Address, Instruction } from '@solana/kit';
 import type { SimulationResult, TransactionRpc } from '../../core/rpc';
 import { MeteoraAdapter, type MeteoraPosition, type MeteoraReader, type Token } from './adapter';
-import { check, decodeAccount, decodePosition, isClosedAccount, PROGRAM, TOKEN, tokenState, type PoolState } from './codec';
+import { check, decodeAccount, decodePosition, isClosedAccount, TOKEN, type PoolState } from './codec';
 import { binArrayIndex } from './math';
 import { computeBudget, createAta, dlmmInstruction, type StepKind } from './instructions';
+import { tokenAccountRent, tokenAccountSize, transferAmounts } from '../../core/tokens';
+import { withdrawalTokenState } from './token-policy';
+import { CLOCK, SYSVAR } from './codec';
 export type MeteoraRpc = MeteoraReader & TransactionRpc & { getMinimumBalanceForRentExemption(size: number): Promise<bigint> };
 export type WithdrawalStep = { id: string; kind: StepKind; lower: number; upper: number; rewardIndex?: number };
-export type Receipt = Token & { amount: bigint };
+export type Receipt = Token & { amount: bigint; grossAmount: bigint; transferFee: bigint };
 export type WithdrawPlan = {
   position: MeteoraPosition; step: WithdrawalStep; remainingSteps: number;
   instructions: Instruction[]; simulationAccounts: Address[]; ataRent: bigint; remainingAtaRent: bigint;
@@ -30,14 +33,25 @@ export function withdrawalSteps(position: MeteoraPosition): WithdrawalStep[] {
   steps.push({ id:'close',kind:'close',lower:0,upper:0 });
   return steps;
 }
-export function totalReceipts(position: MeteoraPosition): Receipt[] {
+export function totalReceipts(position: MeteoraPosition, kinds: readonly StepKind[] = ['remove','fees','reward']): Receipt[] {
   const receipts = new Map<Address,Receipt>();
-  const add = (token: Token, amount: bigint) => {
-    const previous = receipts.get(token.mint); receipts.set(token.mint,{...token,amount:(previous?.amount ?? 0n)+amount});
+  const add = (token: Token, gross: bigint) => {
+    const transfer = transferAmounts(gross,token.token.transferFee,position.epoch), previous = receipts.get(token.mint);
+    receipts.set(token.mint,{...token,amount:(previous?.amount ?? 0n)+transfer.netAmount,
+      grossAmount:(previous?.grossAmount ?? 0n)+gross,transferFee:(previous?.transferFee ?? 0n)+transfer.transferFee});
   };
-  add(position.tokens[0]!,position.bins.reduce((n,b) => n+b.x+b.feeX,0n));
-  add(position.tokens[1]!,position.bins.reduce((n,b) => n+b.y+b.feeY,0n));
-  position.rewards.forEach((token,i) => { if (token) add(token,position.bins.reduce((n,b) => n+b.rewards[i]!,0n)); });
+  for (const kind of kinds) {
+    if (kind === 'close') continue;
+    // Rounding and the maximum fee apply to each range instruction, not the sum of a position.
+    for (let lower = position.state.lower_bin_id; lower <= position.state.upper_bin_id; lower += 70) {
+      const bins = position.bins.filter(b => b.id >= lower && b.id <= lower+69);
+      if (kind === 'reward') position.rewards.forEach((token,i) => { if (token) add(token,bins.reduce((n,b) => n+b.rewards[i]!,0n)); });
+      else {
+        add(position.tokens[0]!,bins.reduce((n,b) => n+(kind === 'remove' ? b.x : b.feeX),0n));
+        add(position.tokens[1]!,bins.reduce((n,b) => n+(kind === 'remove' ? b.y : b.feeY),0n));
+      }
+    }
+  }
   return [...receipts.values()];
 }
 function stepTokens(position: MeteoraPosition, step: WithdrawalStep): Token[] {
@@ -60,11 +74,11 @@ export async function prepareWithdrawAll(input: { rpc: MeteoraRpc; wallet: Addre
     user_token_x:position.tokens[0]!.ata,user_token_y:position.tokens[1]!.ata,
     reserve_x:position.pool.reserve_x,reserve_y:position.pool.reserve_y,
     token_x_mint:position.tokens[0]!.mint,token_y_mint:position.tokens[1]!.mint,
-    token_x_program:PROGRAM,token_y_program:PROGRAM,token_program_x:PROGRAM,token_program_y:PROGRAM,token_program:PROGRAM,
+    token_x_program:position.tokens[0]!.token.program,token_y_program:position.tokens[1]!.token.program,
+    token_program_x:position.tokens[0]!.token.program,token_program_y:position.tokens[1]!.token.program,
+    token_program:tokens[0]?.token.program ?? TOKEN,
     bin_array_bitmap_extension:position.bitmap,
   };
-  // Only ordinary SPL Token is admitted by the adapter.
-  for (const name of ['token_x_program','token_y_program','token_program_x','token_program_y','token_program']) accountKeys[name] = TOKEN;
   if (step.kind === 'reward') {
     accountKeys.reward_vault = position.pool.reward_infos[step.rewardIndex!]!.vault;
     accountKeys.reward_mint = tokens[0]!.mint; accountKeys.user_token_account = tokens[0]!.ata;
@@ -73,15 +87,22 @@ export async function prepareWithdrawAll(input: { rpc: MeteoraRpc; wallet: Addre
     && position.state.fee_infos.every(f => f.fee_x_pending === 0n && f.fee_y_pending === 0n)
     && position.state.reward_infos.every(r => r.reward_pendings.every(v => v === 0n)), 'position cannot close until all liquidity, fees and rewards are cleared');
   const missing = [...new Map(tokens.filter(t => !position.accounts.get(t.ata)).map(t => [t.ata,t])).values()];
-  const allMissing = new Set(steps.flatMap(s => stepTokens(position,s)).filter(t => !position.accounts.get(t.ata)).map(t => t.ata));
-  const rent = allMissing.size ? await input.rpc.getMinimumBalanceForRentExemption(165) : 0n;
-  const instructions = [computeBudget(),...missing.map(t => createAta(input.wallet,t.mint,t.ata)),
+  const allMissing = [...new Map(steps.flatMap(s => stepTokens(position,s)).filter(t => !position.accounts.get(t.ata)).map(t => [t.ata,t])).values()];
+  const rents = new Map<Address,bigint>(), rentBySize = new Map<number,bigint>();
+  for (const token of allMissing) {
+    const size = tokenAccountSize(token.token);
+    let rent = rentBySize.get(size);
+    if (rent === undefined) { rent = (await tokenAccountRent(input.rpc,token.token)).rent; rentBySize.set(size,rent); }
+    rents.set(token.ata,rent);
+  }
+  const instructions = [computeBudget(),...missing.map(t => createAta(input.wallet,t.mint,t.ata,t.token.program)),
     await dlmmInstruction(step.kind,accountKeys,step.lower,step.upper,step.rewardIndex,arrays)];
   const vaults = step.kind === 'reward' ? [accountKeys.reward_vault!] : step.kind === 'close' ? [] : [position.pool.reserve_x,position.pool.reserve_y];
   const uniqueTokens = [...new Map(tokens.map(t => [t.mint,t])).values()];
-  const simulationAccounts = [...new Set([position.address,position.poolAddress,...uniqueTokens.map(t => t.ata),...vaults])];
+  const simulationAccounts = [...new Set([position.address,position.poolAddress,...uniqueTokens.map(t => t.ata),...vaults,
+    ...(step.kind === 'close' ? [] : [CLOCK,...uniqueTokens.map(t => t.mint)])])];
   const plan: WithdrawPlan = { position,step,remainingSteps:steps.length,instructions,simulationAccounts,
-    ataRent:rent*BigInt(missing.length),remainingAtaRent:rent*BigInt(allMissing.size),rentRefund:position.account.lamports ?? 0n,
+    ataRent:missing.reduce((n,t) => n+rents.get(t.ata)!,0n),remainingAtaRent:[...rents.values()].reduce((n,r) => n+r,0n),rentRefund:position.account.lamports ?? 0n,
     receipts:[],remainingReceipts:totalReceipts(position),validateSimulation(result) {
       check(result.error === null && (result.unitsConsumed === undefined || result.unitsConsumed <= 1_400_000n), 'simulation failed or exceeded compute budget');
       check(result.snapshot && result.snapshot.slot >= position.slot && result.snapshot.accounts.length === simulationAccounts.length, 'RPC must return fresh simulated accounts');
@@ -100,18 +121,34 @@ export async function prepareWithdrawAll(input: { rpc: MeteoraRpc; wallet: Addre
           if (target && step.kind === 'reward') check(state.reward_infos[i]!.reward_pendings[step.rewardIndex!] === 0n, 'simulation left unclaimed rewards');
         }
       }
-      plan.receipts = uniqueTokens.map(token => {
-        const before = position.accounts.get(token.ata) ? tokenState(position.accounts.get(token.ata),token.mint,input.wallet).amount : 0n;
-        const after = tokenState(final.get(token.ata),token.mint,input.wallet).amount;
-        check(after >= before, 'simulation reduced the recipient balance');
-        return {...token,amount:after-before};
-      });
+      let epoch = position.epoch;
+      if (step.kind !== 'close') {
+        const clock = final.get(CLOCK);
+        check(clock?.owner === SYSVAR && !clock.executable && clock.data.length === 40, 'invalid simulated Clock sysvar');
+        epoch = new DataView(clock.data.buffer,clock.data.byteOffset,40).getBigUint64(16,true);
+        check(epoch >= position.epoch, 'simulated epoch moved backwards');
+      }
+      const receipts = new Map<Address,Receipt>();
       for (const vault of vaults) {
         const mint = vault === position.pool.reserve_x ? position.pool.token_x_mint : vault === position.pool.reserve_y ? position.pool.token_y_mint : tokens[0]!.mint;
-        const before = tokenState(position.accounts.get(vault),mint,position.poolAddress).amount;
-        const after = tokenState(final.get(vault),mint,position.poolAddress).amount;
-        check(before >= after && before-after === plan.receipts.find(t => t.mint === mint)?.amount, 'simulated vault transfer does not match the recipient receipt');
+        const token = uniqueTokens.find(t => t.mint === mint)!;
+        const mintBefore = position.accounts.get(mint)!, mintAfter = final.get(mint);
+        check(mintAfter && mintAfter.owner === mintBefore.owner && !mintAfter.executable && mintAfter.data.length === mintBefore.data.length
+          && mintAfter.data.every((b,i) => b === mintBefore.data[i]), 'simulation changed the mint configuration');
+        const before = withdrawalTokenState(position.accounts.get(vault),token.token,position.poolAddress);
+        const after = withdrawalTokenState(final.get(vault),token.token,position.poolAddress);
+        check(before.amount >= after.amount && before.withheldAmount === after.withheldAmount, 'simulation reduced withheld vault fees or increased vault balance');
+        const transfer = transferAmounts(before.amount-after.amount,token.token.transferFee,epoch);
+        const recipientBefore = position.accounts.get(token.ata) ? withdrawalTokenState(position.accounts.get(token.ata),token.token,input.wallet) : null;
+        const recipientAfter = withdrawalTokenState(final.get(token.ata),token.token,input.wallet);
+        check(recipientAfter.amount-(recipientBefore?.amount ?? 0n) === transfer.netAmount,
+          'simulated vault transfer does not match the net recipient receipt');
+        check(recipientAfter.withheldAmount-(recipientBefore?.withheldAmount ?? 0n) === transfer.transferFee,
+          'simulated withheld transfer fee does not match the mint fee');
+        receipts.set(mint,{...token,amount:transfer.netAmount,grossAmount:transfer.grossAmount,transferFee:transfer.transferFee});
       }
+      plan.receipts = [...receipts.values()];
+      plan.remainingReceipts = totalReceipts({...position,epoch});
     } };
   return plan;
 }

@@ -1,7 +1,9 @@
 # ORE interface provenance
 
-lifeboat-cli v0.1 uses a locally reconstructed, verified subset of the ORE program
-interface. It is not an official ORE IDL.
+Lifeboat bundles a locally reconstructed, verified subset of the ORE program
+interface migrated from `lifeboat-cli` v0.1. It is not an official ORE IDL.
+CLI-specific descriptions below record the original source audit; current mobile
+behavior is documented in [ORE operations](ore-operations.md).
 
 ## Source of truth
 

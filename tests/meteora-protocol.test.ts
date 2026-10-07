@@ -1,3 +1,4 @@
+import { testWalletSigning } from './fixtures/signer';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { address, getTransactionEncoder } from '@solana/kit';
@@ -84,7 +85,7 @@ describe('Meteora pinned protocol',()=>{
     const plan=await prepareWithdrawAll({rpc:f.rpc,wallet:f.signer.address,position:POSITION});
     expect(plan!.ataRent).toBe(4_078_560n);expect(plan!.instructions).toHaveLength(4);
     expect(plan!.remainingReceipts.map(t=>t.amount)).toEqual([54n,0n]);
-    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,getSigner:async()=>f.signer,operation:operation(f.signer.address),
+    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async review=>{expect(review.receipts.every(t=>t.amount>=0n)).toBe(true);return true;},beforeSend:async()=>{},confirmed:async()=>{}});
     expect(result.status).toBe('confirmed');expect(result.operation.completed.map(c=>c.step.kind)).toEqual(['remove','fees','close']);
     expect(f.rpc.blockhashes).toBe(3);expect(f.rpc.simulations).toHaveLength(3);
@@ -94,7 +95,7 @@ describe('Meteora pinned protocol',()=>{
   it('claims fee-only and reward-only ranges before closing, including an extended bin',async()=>{
     const f=await meteoraFixture({width:71,shares:false,reward:true});const d=f.rpc.accounts.get(POSITION)!.data;
     u64(d,feeOffset(70)+32,7n);u64(d,rewardOffset(70)+32,9n);
-    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,getSigner:async()=>f.signer,operation:operation(f.signer.address),
+    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async()=>true,beforeSend:async()=>{},confirmed:async()=>{}});
     expect(result.operation.completed.map(c=>c.step.kind)).toEqual(['fees','reward','close']);
   });
@@ -106,7 +107,7 @@ describe('Meteora pinned protocol',()=>{
   it('accepts only null or the exact zero-lamport system tombstone as a closed account',async()=>{
     const f=await meteoraFixture({shares:false});
     f.rpc.mutateSimulation=accounts=>accounts.set(POSITION,{owner:ZERO,lamports:0n,executable:false,data:new Uint8Array()});
-    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,getSigner:async()=>f.signer,operation:operation(f.signer.address),
+    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async()=>true,beforeSend:async()=>{},confirmed:async()=>{}});
     expect(result.status).toBe('confirmed');
     f.rpc.accounts.set(POSITION,{owner:ZERO,lamports:1n,executable:false,data:new Uint8Array()});
@@ -120,7 +121,7 @@ describe('Meteora pinned protocol',()=>{
     if(kind==='wrong recipient')f.rpc.mutateSimulation=accounts=>pubkey(accounts.get(f.reserveX)!.data,32,ZERO);
     if(kind==='shares')f.rpc.mutateSimulation=accounts=>u128(accounts.get(POSITION)!.data,72,Q64);
     const plan=await prepareWithdrawAll({rpc:f.rpc,wallet:f.signer.address,position:POSITION});
-    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,getSigner:async()=>f.signer,operation:operation(f.signer.address),
+    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async()=>true,beforeSend:async()=>{},confirmed:async()=>{}},async opts=>{
         // Use the shared executor, with a compute overflow injected only in this case.
         const {executeSafeTransaction}=await import('../src/core/transaction');
@@ -131,14 +132,14 @@ describe('Meteora pinned protocol',()=>{
   });
   it('freshly plans multiple arrays/transactions and all rewards before a checked close',async()=>{
     const f=await meteoraFixture({width:142,reward:true});const completed:MeteoraOperation[]=[];
-    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,getSigner:async()=>f.signer,operation:operation(f.signer.address),
+    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async()=>true,beforeSend:async()=>{},confirmed:async op=>{completed.push(op);}});
     expect(result.status).toBe('confirmed');expect(result.operation.completed.map(c=>c.step.kind)).toEqual(['remove','remove','remove','fees','fees','fees','reward','reward','reward','close']);
     expect(completed).toHaveLength(10);expect(f.rpc.blockhashes).toBe(10);
   });
   it('stops on cancellation and resumes from confirmed state without repeating a step',async()=>{
     const f=await meteoraFixture({width:1});let saved=operation(f.signer.address),reviews=0;
-    const input={wallet:f.signer.address,getSigner:async()=>f.signer,operation:saved,confirm:async()=>++reviews===1,
+    const input={wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:saved,confirm:async()=>++reviews===1,
       beforeSend:async()=>{},confirmed:async(op:MeteoraOperation)=>{saved=op;}};
     expect((await executeMeteoraWithRpc(f.rpc,input)).status).toBe('partial');expect(f.rpc.sent).toHaveLength(1);
     const final=await executeMeteoraWithRpc(f.rpc,{...input,operation:saved,confirm:async()=>true});

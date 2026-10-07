@@ -6,5 +6,6 @@
   "sourceRepository": "https://github.com/MeteoraAg/dlmm-sdk",
   "idlPath": "ts-client/src/dlmm/idl/idl.json",
   "idlSha256": "045c0f4af044be046b6a14b350077e4242e8ac026b64a855803dab30fcdd8b35",
-  "network": "mainnet-beta"
+  "network": "mainnet-beta",
+  "tokenInterface": "../../core/token-interface.json"
 }

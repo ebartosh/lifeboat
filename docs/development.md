@@ -2,6 +2,8 @@
 
 Run commands in PowerShell from the project root. On this machine, there is no need to locate the JDK and SDK again: the script selects them, checks the JDK and Platform 36, and restores environment variables when it finishes.
 
+Use the build decision table and current commands below. Dated verification and device-attempt paragraphs are historical records for the stated code/build; their pending results and test counts are not the current test-suite total. Later entries may supersede earlier observations. Current wallet behavior is in [Wallets and RPC](wallet-and-rpc.md), and the [documentation index](README.md) links the focused validation records.
+
 ## Normal emulator build
 
 If dependencies are installed and `android/` already exists:
@@ -18,12 +20,14 @@ Output: `android/app/build/outputs/apk/debug/app-debug.apk`. This debug APK requ
 | --- | --- |
 | TS/JS, styles, or text only | Start Metro; the installed debug APK is sufficient if native dependencies have not changed. |
 | `package.json` / lockfile | `corepack pnpm install --frozen-lockfile`; if native dependencies changed, run prebuild and build the APK. |
-| Native dependencies, Expo plugins, or native `app.json` settings | `corepack pnpm exec expo prebuild --platform android`, then build the APK. |
+| Native dependencies, Expo plugins, or native `app.json` settings | `corepack pnpm exec expo prebuild --platform android --no-clean`, then build the APK. |
 | New checkout, missing `android/` | Install dependencies, run prebuild, and build the APK. |
 | Generated Android project synchronization error | After identifying the cause, `prebuild --clean` is acceptable; it recreates `android/` and removes manual changes there. |
 | Different machine, updated requirements, or tool lookup error | Check the environment using the section below. |
 
 Expo generates `android/`, which is excluded from Git. Keep permanent settings in Expo configuration, plugins, or scripts, rather than only in generated files.
+
+With the installed Expo CLI 57.0.27, prebuild defaults to recreating native folders (`clean: !args['--no-clean']` in the local CLI). Use **`--no-clean` explicitly** for ordinary native synchronization. On October 6, the previously documented command without that flag recreated `android/` while removing document-picker, causing extra native recompilation. No Gradle clean or cache-clearing command was issued. The current template's signing certificate remained unchanged.
 
 ## Verified environment
 
@@ -44,7 +48,7 @@ Expo, React Native, Solana Kit, and MWA versions are pinned in `package.json` an
 
 ```powershell
 corepack pnpm install --frozen-lockfile
-corepack pnpm exec expo prebuild --platform android
+corepack pnpm exec expo prebuild --platform android --no-clean
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 -Architecture x86_64
 ```
 
@@ -104,6 +108,12 @@ For connection troubleshooting, see [Android's hardware-device guide](https://de
 
 ## Checking changes
 
+The October 6, 2026 wallet update removes JSON keypair import and local wallet signing. Older app-owned key files are left untouched and are never loaded. Runtime encoding/signature checks and their deterministic signing material now live under test fixtures; the local RPC helper uses that test-only encoding oracle. Temporary Kamino signers remain required for native SOL operations.
+
+The October 6 removal of `expo-document-picker` changed a native dependency. A checkout whose generated Android project still contains it needs dependency synchronization and prebuild with `--no-clean` before the next native build. The requested October 6 diagnostic release already included that synchronization, as recorded below. Do not repeat it when the native project matches the lockfile; use the existing debug x86_64 build script. A release rebuild requires an explicit request.
+
+The removal passed TypeScript, all 274 tests, and 73 browser layout/interaction cases on October 6, 2026, including direct connection, cancelled wallet switching and disconnect. No APK was built or installed for this change. In the restricted shell, pnpm could not open its store operation lock; the installed TypeScript/Vitest entry points were run with Node directly. The interface check required execution outside the restricted shell to bundle and launch the headless browser.
+
 ```powershell
 corepack pnpm typecheck
 corepack pnpm test
@@ -111,11 +121,29 @@ corepack pnpm test
 corepack pnpm test:interface
 ```
 
+The October 7 header update places wallet connection/details and an icon-only refresh command at the upper right. Wallet switching is inside Wallet details; the network badge, Fonts and license command/dialog, and bottom command bar are removed. TypeScript, five interface asset checks, and 76 browser layout cases plus interaction checks passed, including the real application header at 360 px with 1×, 1.3×, and 2× text, refresh requests, disconnect and cancelled switching. Screenshots and the report are in `.cache/interface-check/`. This is a TS/JS-only change: use Metro with the existing compatible debug APK; no native rebuild, prebuild or clean is needed. No APK was built or installed for this update.
+
 Also check the interface on a narrow screen, with 2× text, the keyboard, system insets, and long addresses and amounts. MWA wallet checks require a compatible Android wallet; the [Solana Mobile development wallet](https://docs.solanamobile.com/get-started/development-setup) can be used.
 
-For a wallet that opens without an approval request, return to Lifeboat and record whether its connection message reports session establishment, authorization, or return/account validation. **Connect external wallet** starts a fresh request; signing reuses the saved token. Check approval, rejection, reconnection, and preservation of the previous wallet after cancellation on the actual wallet/device. Unit mocks cannot establish Phantom compatibility. These TS-only connection changes need Metro refresh in debug; a standalone release APK requires rebuilding only when requested.
+For a wallet that opens without an approval request, return to Lifeboat and record whether its connection message reports session establishment, authorization, or return/account validation. **Connect wallet** starts a fresh request; signing reuses the saved token. Check approval, rejection, reconnection, and preservation of the previous wallet after cancellation on the actual wallet/device. Unit mocks cannot establish Phantom compatibility. These TS-only connection changes need Metro refresh in debug; a standalone release APK requires rebuilding only when requested.
+
+### Phantom signature diagnostics
+
+The October 7 expiry investigation used read-only `scripts/diagnose-blockhash.mjs` and `scripts/diagnose-blockhash-window.mjs`. Current samples had 149–150 remaining blocks; historical metadata for the failed interval showed 176 produced blocks over 48 seconds (about 273 ms/block). A fresh 150-block budget therefore lasted about 41 seconds during that interval. The public RPC's faster historical query sequence hit HTTP 429; bounded retries and one-second pacing completed the slower run with 30 requests. No transaction contents, signatures, addresses or credentials are saved by these probes, and they never simulate, sign or send transactions. See [blockhash expiry](blockhash-expiry.md) for the reports and phase breakdown. This investigation did not change application execution code, require an APK rebuild, or remove any expiry/fee-review checks.
+
+The first captured October 7 Claim ORE on the URI comparison build returned a Phantom signature and passed bounded wallet-addition validation and repeated simulation. The updated-fee review was approved, then `pre-send-height` stopped with `blockhash-expired` about 48.2 seconds after preparation started. No `send-start` occurred. The earlier -3 signing refusal did not reproduce on this attempt, but token reuse still returned -1. This is progress in signing compatibility, not verified network confirmation; see [Phantom evidence](phantom-validation.md#observed-phantom-result). Block-height freshness at acquisition/review was not recorded, so do not infer the exact expiry cause from elapsed time alone.
+
+On October 7, the user requested a project-page URI experiment in the existing repository. GitHub Pages was published from the isolated `gh-pages` branch (`ad1f5a4eb329c7d727e2ad47a592fb2d4d7e6908`) at `https://ebartosh.github.io/lifeboat/`. The page and project-path JSON returned HTTP 200 without redirects; JSON content type, package and test certificate were verified. Origin-root `/.well-known/assetlinks.json` still returned HTTP 404, so this is not a Digital Asset Links verification experiment. Local `.env.local` configures the page URI for the requested APK comparison. This environment-only change requires no native prebuild, dependency reinstall or cache cleaning. The 28 identity/adapter tests passed; packaging checks must verify the exact URI in the embedded bundle. See [wallet identity](wallet-identity/README.md) for publication and the remaining domain-root requirement.
+
+The memo-check interface and capability logging are TS/JS changes. For these changes alone, use the existing debug APK with Metro when its native dependencies match; no prebuild or clean is needed. If packaging the parallel removal of `expo-document-picker`, follow the native dependency synchronization instructions above. A standalone release must be explicitly requested before rebuilding it; the existing standalone APK does not receive JS changes through Metro.
+
+Open **Wallet details > Wallet signature check**, start the filtered capture helper, then choose **Sign memo without sending** and approve the request yourself. The app requests one legacy memo signature and verifies it locally; neither this check nor the capture helper submits a transaction. Capability discovery records only fixed feature/version flags and numeric request limits. Discovery failure is diagnostic and does not trigger a new connection prompt or select another signing/submission method. The SDK normalizes capabilities, so these flags are not evidence of the exact negotiated protocol version.
+
+Read [Phantom diagnostics](phantom-validation.md) before comparing attempts. On October 6, 2026, TypeScript, 27 focused adapter/check/filter tests, and 73 browser layout/interaction cases passed. The phone was available through ADB, but the initial filtered snapshot contained no wallet attempt events. At that point no new Phantom signing result, identity experiment, APK build or installation had been performed; subsequent requested packaging is recorded below.
 
 ### Capturing a wallet connection
+
+The installed October 6 diagnostic release subsequently captured two user-triggered Phantom memo checks. Both returned -1 on legacy token reuse, succeeded in fresh authorization, saved renewal, then returned -3 on `sign_transactions` (34/460 ms after the adapter's signing milestone). Neither returned a signature. Normalized capabilities were `signTransactions=yes signAndSend=yes legacy=yes v0=yes maxTransactions=10`; the SDK synthesizes the signing feature for legacy sessions, so it is not proof of successful method implementation. This reproduces the refusal without an ORE instruction. See [the observed memo result](phantom-validation.md#observed-phantom-result) for the evidence and remaining hypotheses.
 
 On October 5, 2026, the user confirmed that battery saver mode prevented wallet connection on their phone. Solflare displayed an error identifying battery saver; Phantom opened without displaying a connection request or explaining the cause. Connection worked after battery saver was disabled. This is a device observation, not a compatibility guarantee for every Android device or wallet version. Check battery saver before reproducing this symptom, and record its state alongside the log. Transaction approval testing is still pending.
 
@@ -127,7 +155,7 @@ node scripts/capture-wallet-logs.mjs PHONE_SERIAL
 node scripts/capture-wallet-logs.mjs PHONE_SERIAL --snapshot
 ```
 
-Keep capture running, open Lifeboat, and choose **Connect external wallet** once. Keep the wallet unlocked. If no prompt appears, wait about 15 seconds and return to Lifeboat; if authorization was sent, its native request timeout can take about 90 seconds. Read the status, then press Ctrl+C in the capture terminal. The script prints the saved `.cache/wallet-diagnostics-*.log` path. It records device/Android and wallet versions, fixed native milestones, and Lifeboat's `trace=v1` events. It does not clear logcat or save raw logs. The native SDK logs full request params, including tokens during signing: use the filtered script rather than sharing an unfiltered logcat capture.
+Keep capture running, open Lifeboat, and press **Connect wallet** once. Keep the wallet unlocked. If no prompt appears, wait about 15 seconds and return to Lifeboat; if authorization was sent, its native request timeout can take about 90 seconds. Read the status, then press Ctrl+C in the capture terminal. The script prints the saved `.cache/wallet-diagnostics-*.log` path. It records device/Android and wallet versions, fixed native milestones, and Lifeboat's `trace=v1` events. It does not clear logcat or save raw logs. The native SDK logs full request params, including tokens during signing: use the filtered script rather than sharing an unfiltered logcat capture.
 
 New JS diagnostics require the current code via Metro in debug. An older standalone APK still provides native milestones but will lack `trace=v1` lines; a release rebuild remains an explicit user decision. In Android Studio Logcat, select the phone and query `tag:SolanaMobileWalletAdapterModule | tag:ReactNativeJS`; inspect locally and share the filtered script output.
 
@@ -141,11 +169,21 @@ The follow-up attempt through Solflare reported `check=message-length`. Ed25519 
 
 The next device trace confirmed a structural mutation through Solflare 2.29.1: the original legacy Claim ORE message was 412 bytes, 11 accounts, 1 instruction, and no Compute Budget instructions; the returned legacy message was 594 bytes, 13 accounts, 5 instructions, including 2 Compute Budget instructions. The decoder consumed all bytes on both sides, excluding trailing-padding artifacts. This identifies the immediate failure: the wallet signing path returns an expanded transaction rather than the exact simulated message. The two other added instructions were not identified by these filtered structural logs. Do not call them harmless fees without inspecting them. Compare with another MWA wallet using the same account; supporting wallet modifications requires a separate design that validates every added instruction, fees, simulation, and user approval, not removing byte equality checks.
 
+The instruction-diagnostic update logs `instruction-detail` only when a wallet response fails message-length or message-bytes validation. It decodes the original and returned legacy/v0 instructions in memory, then records program IDs, known instruction kinds, numeric opcodes, lengths and numeric operands. `compute-limit` values are compute units; `compute-price` values are micro-lamports per compute unit; `system-transfer` values are lamports; token transfer/approval values are raw token units, with decimals in `secondary` for checked variants. System account creation records lamports and space. Memo text, unknown instruction payloads, wallet/account addresses, authorization tokens, signatures and whole transactions remain excluded. Program IDs and decoded numeric operands are explicit additions to the previous structure-only log policy. Account references use `original-N` for the original static-account index or `added-N` for the returned static-account index. They do not identify a recipient's real-world owner or prove that a transfer is a wallet fee.
+
+`originalIndex=N` means an instruction matches original instruction N by resolved program, data, ordered accounts and their signer/writable roles; unresolved lookup-table accounts are never treated as a match. This is a diagnostic comparison, not an acceptance rule, and does not establish ordering or whole-message equivalence. Malformed, oversized, trailing-byte and unsupported v1 messages produce no instruction details. Exact message and signature checks still block submission. Existing captures did not preserve Solflare's signed payload, so a repeated user-approved Claim ORE is required after installing this update. TypeScript and 30 focused instruction/filter/signature/transaction tests passed before rebuilding the diagnostic ARM64 release; no native changes, prebuild or cache cleaning are needed.
+
+This diagnostic ARM64 release built successfully in 2m 7s on October 5, 2026. APK v2 verification passed, and its embedded bundle contains the new instruction-diagnostic markers. SHA-256: `490AC06D8C30FE0D53460CC2B5768F54F13D63DC7EC03A4B9A62800153F0A304`. The phone disconnected from ADB during the build. After the user restored USB, `adb install -r` completed successfully, the installed APK hash matched, and Lifeboat opened. The subsequent user-approved Solflare reproduction was captured as described below. This APK also contains the optional identity-URI configuration, but no project URI has been configured or page published.
+
+The October 5 Solflare reproduction at 20:19:51 returned the same 594-byte/5-instruction structure. Instruction 0 still matched the original ORE Claim ORE by program, instruction data, ordered accounts and signer/writable roles (`originalIndex=0`). Instructions 1 and 2 were `SetComputeUnitLimit(240000)` and `SetComputeUnitPrice(100000)` (micro-lamports per unit), respectively. The calculated priority-fee component is 24,000 lamports (0.000024 SOL), excluding the base fee and any costs of the original operation. Instructions 3 and 4 called `L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95`, with one account each, discriminators 6/10 and data lengths 26/64. The [Lighthouse generated account-info instruction](https://github.com/Jac0xb/lighthouse/blob/main/clients/js/src/generated/instructions/assertAccountInfoMulti.ts) identifies 6 as `AssertAccountInfoMulti`; the [token-account instruction](https://github.com/Jac0xb/lighthouse/blob/main/clients/js/src/generated/instructions/assertTokenAccountMulti.ts) identifies 10 as `AssertTokenAccountMulti`. These are assertion instruction types, rather than additional transfer instructions. Exact assertion fields/thresholds and target-account references were not recorded by the generic diagnostic version, so they have not been decoded. This is not verification of the deployed program binary or an implemented acceptance policy. Lifeboat still rejected message-length before Ed25519 verification and submission; no `send-start` occurred. Supporting this response should preserve the original operation and validate only the specific assertion variants, targets and payloads, bounded Compute Budget settings, unchanged signer/fee-payer/lifetime context and the actual signed transaction before submission.
+
 A subsequent Phantom 26.31.1 trace showed failed token reuse, fallback to fresh authorization, then `ERROR_NOT_SIGNED` immediately after `sign_transactions` (about 50 ms, without a signature result). The old broad fallback did not record the token-reuse error code; its precise cause is still unknown. Signing now falls back only on `ERROR_AUTHORIZATION_FAILED` (-1), recognizes both normalized SDK errors and native `JSON_RPC_ERROR/userInfo.jsonRpcErrorCode` errors, and records the sanitized code on `authorize-retry` or `authorize-rejected`. Renewed authorization for the same account is saved before requesting the signature, so a later refusal does not leave the old token on disk. `ERROR_NOT_SIGNED` is classified as `wallet-not-signed`, not proof of user cancellation. No signature request is made if renewal cannot be persisted. These changes need device verification with Phantom; they do not establish why Phantom initially refused reuse or signing.
 
 The next Phantom trace verified the corrected path: reuse returned -1, fresh authorization completed, `authorization-saved` occurred before `sign-start`, and signing still returned -3 about 30 ms later. No signature or submission followed. The trace also included a manual fresh connection before the claim, so it did not yet test reuse of the authorization persisted after the failed signature request. Repeat Claim ORE without choosing Connect/Switch again to test that path. Missing `identity.uri` remains a hypothesis for authorization behavior: the MWA identity-verification guidance recommends declining unverifiable identities, but the current trace does not prove that this is Phantom's refusal reason. Do not add an unrelated or invented app website as a workaround.
 
 Repeating the claim without another manual connection also returned -1 on reuse and -3 on signing. Saving renewal therefore did not resolve Phantom's refusal. The user reported that Phantom marks Lifeboat as unreliable and confirmed that no project HTTPS site exists. An identity-verification experiment is prepared in [wallet-identity/README.md](wallet-identity/README.md): optional `EXPO_PUBLIC_WALLET_IDENTITY_URI`, a project-page draft, and the current APK certificate association. No URI has been set, no page has been published, and no APK has been rebuilt for this option. Missing domain identity is a plausible hypothesis; the warning and numeric error codes do not establish Phantom's exact refusal reason.
+
+On October 5, 2026, the user confirmed that Claim ORE initiated in Lifeboat succeeded with Jupiter as the external wallet. The filtered device trace at 17:30 showed successful authorization and signing, followed by unchanged-message and signature validation, RPC submission, and `confirmed` at 17:30:40.445 (7,674 ms from transaction start). Both original and returned messages were legacy, 412 bytes, 11 accounts, 1 instruction, and no Compute Budget instructions. This establishes a working end-to-end path on the tested device/build without a configured identity URI. Jupiter's exact version and whether the account was identical to the earlier wallet tests were not recorded. Keep this as the working comparison for Phantom and Solflare; it does not explain their failures or establish compatibility for other operations.
 
 | Last milestone | Interpretation |
 | --- | --- |
@@ -168,16 +206,17 @@ For an external wallet, add `--wallet=<public address>`. The server checks Ed255
 
 ### Meteora verification
 
-The normal suite includes independent position/bin byte fixtures, captured public mainnet pool accounts, calculations, strict simulation postconditions, sequential local test-key signing, MWA handoff mocks, and durable restart/unknown-result tests. `pnpm test:interface` includes Meteora positions, restrictions, review, partial progress and unknown-result states at 360 px and 1×/1.3×/2× text. Artifacts are in `.cache/interface-check/`.
+The normal suite includes independent position/bin byte fixtures, captured public mainnet pool accounts, calculations, strict simulation postconditions, sequential mocked external-wallet signing, MWA handoff mocks, and durable restart/unknown-result tests. `pnpm test:interface` includes Meteora positions, restrictions, review, partial progress and unknown-result states at 360 px and 1×/1.3×/2× text. Artifacts are in `.cache/interface-check/`.
 
 Optional SDK differential verification (isolated reference install; no application dependency changes):
 
 ```powershell
-npm.cmd install --prefix .cache/meteora-reference --ignore-scripts --no-audit --no-fund @meteora-ag/dlmm@1.9.14
+npm.cmd install --prefix .cache/meteora-reference --ignore-scripts --no-audit --no-fund @meteora-ag/dlmm@1.9.14 @solana/spl-token@0.4.15
 node --import tsx scripts/verify-meteora-reference.mjs
+node --import tsx scripts/verify-token-reference.mjs
 ```
 
-The report is `.cache/meteora-reference/report.json`. Compare again when the bundled protocol source or codec/instruction logic changes, rather than reinstalling it for every Android build.
+The reports are `.cache/meteora-reference/report.json` and `.cache/token-reference/report.json`. The reference scripts enforce exact client versions and make no network calls. Compare again when the bundled protocol source or token codec/instruction/fee logic changes, rather than reinstalling it for every Android build. Token-2022 is TS/JS only and adds no native or application dependencies. An existing compatible debug APK receives these changes through Metro without prebuild or an APK rebuild. An installed standalone release embeds its JS bundle and requires a requested rebuild to include them.
 
 Read-only mainnet account capture and unsigned simulation:
 
@@ -205,11 +244,35 @@ Open the existing debug APK through the normal Metro link. Verify positions, WSO
 Remove-Item Env:EXPO_PUBLIC_LIFEBOAT_TEST_RPC -ErrorAction SilentlyContinue
 ```
 
-Meteora is TS/JS only and needs no native dependency changes, prebuild or APK rebuild. Native checks on October 5, 2026 use the existing debug x86_64 APK and local Metro; no production build or real mainnet submission is required.
+Meteora is TS/JS only and needs no native dependency changes or prebuild. With a compatible debug APK, use Metro without rebuilding the APK; a standalone release requires a requested rebuild to include JS changes. Native checks on October 5, 2026 use the existing debug x86_64 APK and local Metro; no production build or real mainnet submission is required.
 
 When rebuilding already verified code without changes, checking the build output, installation, and startup is sufficient. Repeat the full test suite for changes or new reasons to verify.
 
+## Repository files and local outputs
+
+Keep source, documentation, Expo configuration, scripts, `pnpm-lock.yaml`, `.env.example`, public interface JSON and deterministic/public test fixtures in Git. `android/` is generated; permanent native settings belong in Expo configuration, plugins or scripts.
+
+The root [`.gitignore`](../.gitignore) excludes dependencies, Expo/pnpm caches, `.cache/` diagnostic reports and screenshots, `dist/` exports, `artifacts/` APK copies, coverage, build logs, JVM heap dumps, local environment files, Android signing keys and IDE state. Device copies named `lifeboat-wallet.json`, `lifeboat-external-wallet.json`, `lifeboat-pending.json`, `lifeboat-meteora-operation.json` and `lifeboat-rpc.txt`, including staging/backup suffixes, are also excluded. These are private app records, not repository fixtures; external-wallet records contain authorization tokens and legacy wallet files may contain private keys.
+
+Check exclusions from the project root:
+
+```powershell
+git status --short --untracked-files=normal
+git check-ignore -v .env.local .cache/interface-check/report.json artifacts/example.apk lifeboat-external-wallet.json
+git ls-files --cached --ignored --exclude-standard
+```
+
+The last command should print nothing: ignore rules do not remove files already tracked by Git. Keep exclusions specific; do not ignore all JSON files or the fixture directories. `.env.example` stays versioned, and `EXPO_PUBLIC_` values are embedded in the app rather than protected by ignoring the local environment file.
+
 ## Release and production: only on explicit request
+
+On October 7, 2026, the user requested rebuilding the Token-2022 Meteora update and the corrected PermissionlessV2 pool PDA validation. `scripts/build-android.ps1 -Release -Architecture arm64-v8a` succeeded in 1m 23s (16 tasks executed, 715 up-to-date). No prebuild, dependency reinstall, Gradle clean or manual cache clearing was run. Packaging reuses the verified TypeScript/tests/interface/reference results; the full suite was not repeated for the rebuild. The source map includes the shared token layer and the corrected `base_key` preset seed, and the APK's embedded Hermes bundle exactly matches the verified generated bundle. Token fee/simulation markers and the configured project identity URI are present. APK v2 signature verification passed with the existing certificate; native libraries are ARM64 only. The named artifact is `artifacts/lifeboat-token2022-arm64-2026-10-07.apk` (39,913,268 bytes), SHA-256 `9626F7D53D4AA39952D42B0DDBB5D23766E850FAC9489EE488B6A9DBC5425F71`. `adb install -r` on `RZCW4097DLF` is currently pending the foreground Google Play Protect dialog. ADB was not retried while that installation remains active. Device installation and startup verification remain pending; no financial operation was initiated.
+
+On October 7, 2026, the requested project-page URI comparison built with `scripts/build-android.ps1 -Release -Architecture arm64-v8a` in 2m 44s (16 tasks executed, 715 up-to-date). No prebuild, dependency reinstall or cache cleaning was run for this environment-only change. Expo loaded `.env.local`; both the generated bundle and final APK contain `https://ebartosh.github.io/lifeboat/` and the memo-check markers. APK v2 verification passed. A named copy is saved as `artifacts/lifeboat-project-uri-arm64-2026-10-07.apk`, SHA-256 `E37745DCA0BF2BB0DE4F4D5D4C079E2DFF5816FB748A65CED5BB0B8A2E3C563C`. The phone initially appeared as an unnamed offline ADB transport; `adb reconnect offline` removed that stale transport. After the user reconnected `RZCW4097DLF`, `adb install -r` delivered the APK and waited on the confirmed foreground Play Protect dialog. It subsequently returned `Success`. The installed APK hash matched the project-URI build, and Lifeboat launched with activity status `ok` and a running process (cold start, 328 ms). No duplicate installation was needed; application data was retained. Fresh filtered log capture was started for the user-approved Phantom comparison. Its subsequent signed response and pre-submission expiry are recorded in [Phantom diagnostics](phantom-validation.md#observed-phantom-result). The project page is public, but origin-root association remains HTTP 404, so this APK tests adding a real identity URI rather than verified Digital Asset Links.
+
+On October 6, 2026, the user requested installation of the Phantom diagnostic update. Dependencies were synchronized with `pnpm install --frozen-lockfile` (document-picker removed, no downloads), and Android prebuild ran with `--no-install`. Because the installed Expo CLI defaults to cleaning, that command recreated the generated project; future ordinary synchronization must include `--no-clean` as documented above. `scripts/build-android.ps1 -Release -Architecture arm64-v8a` succeeded in 10m 47s (699 executed tasks, 32 up-to-date). APK v2 verification passed with the unchanged test certificate. The archive contains only ARM64 native libraries and includes **Wallet signature check**, **Sign memo without sending**, `LifeboatWalletCheck`, and `event=capabilities` in its embedded bundle. APK SHA-256: `07327F3D35C513D1CFC15F68896C0798D456AFF19A223231721CBBDE594DD212`. No full test rerun was needed for packaging already verified code. `adb install -r` on `RZCW4097DLF` waited for several minutes, then returned `Success`. After the user reconnected the phone, the installed APK hash matched this build and Lifeboat launched successfully (cold start, activity status `ok`, process present). No duplicate installation was needed. Application data was retained by the update. This verifies packaging, installation and startup; a user-approved Phantom memo signature remains pending.
+
+The Solflare compatibility update is TS/JS only and requires no native prebuild or cleaning. It adds a bounded modified-message policy, parsed Lighthouse assertion diagnostics, repeat simulation/postcondition checks and a second fee review. The existing strict memo check is unchanged. [solflare-validation.md](solflare-validation.md) records the acceptance rules and separate automatic/device matrix. Before packaging, TypeScript, the 273-test full suite and 65 interface cases passed; 62 follow-up focused tests passed after adding unavailable/inconsistent updated-fee checks and repeated simulation hooks. The previously authorized diagnostic ARM64 release rebuilt successfully in 2m 46s. APK v2 verification passed and the bundle contains the repeat-simulation/review markers and **Send transaction** label. SHA-256: `4E3496770DA663F2607A79ECFA035387B172D21DA54A2F904AC39AB961B236D2`. `adb install -r` initially waited while the phone was locked, then completed successfully. The installed APK hash matched on the subsequent check; no duplicate installation was needed. A successful build/install is not a successful Solflare transaction.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 -Release -Architecture all
@@ -222,3 +285,5 @@ On October 5, 2026, an explicitly requested ARM64 release with wallet/transactio
 `corepack pnpm build` performs an Expo production export for Android, rather than building an APK. It is unnecessary for normal emulator testing.
 
 The current RPC is `https://api.mainnet.solana.com`; no API key is required. `EXPO_PUBLIC_HELIUS_API_KEY` is reserved for future Helius selection and is unused by the current default RPC. `EXPO_PUBLIC_` values are embedded in the app and can be extracted. Public RPC rate limits are suitable for a prototype; production configuration requires a separate decision.
+
+The October 7 expiry-message update is TS/JS only. It recognizes known expiry before submission, explains fresh preparation and approval without long pauses, and preserves unknown-result blocking and Meteora checkpoints. TypeScript, 64 focused transaction/controller tests and 82 interface layout cases with interaction checks passed. The new error and Meteora resume messages were checked at 360 px with 1×, 1.3× and 2× text scaling; the 2× expiry screenshot was visually inspected. These are RN Web preview checks, not native-device verification. This update requires an ordinary JS-inclusive rebuild to appear in the installed APK; no native prebuild, clean or dependency changes are needed. The installed project-URI APK predates this message change. See [blockhash-expiry.md](blockhash-expiry.md) for the diagnosis and recovery rules.

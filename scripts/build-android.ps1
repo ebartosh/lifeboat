@@ -11,7 +11,7 @@ if (!(Test-Path -LiteralPath "$JavaPath\bin\java.exe")) { throw "JDK not found: 
 if (!(Test-Path -LiteralPath "$SdkPath\platforms\android-36")) { throw 'Android SDK Platform 36 is required' }
 $root = Split-Path -Parent $PSScriptRoot
 if (!(Test-Path -LiteralPath "$root\android\gradlew.bat")) {
-  throw 'Run corepack pnpm exec expo prebuild --platform android first'
+  throw 'Run corepack pnpm exec expo prebuild --platform android --no-clean first'
 }
 
 $names = @('JAVA_HOME', 'ANDROID_HOME', 'PATH', 'NODE_ENV', 'CMAKE_BUILD_PARALLEL_LEVEL', 'DEBUG')

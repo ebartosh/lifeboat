@@ -4,7 +4,7 @@ import { createOreAdapter } from '../protocols/ore-bundle';
 import { claimOre, claimSol, readOreRewards, type OreClaimOptions } from './ore';
 import { readRewardsSnapshot } from './rewards';
 
-type ClaimInput = Pick<OreClaimOptions, 'wallet' | 'getSigner' | 'signWithWallet' | 'confirm' | 'onSimulated' | 'assertActive' | 'beforeSend'>;
+type ClaimInput = Pick<OreClaimOptions, 'wallet' | 'signWithWallet' | 'confirm' | 'onSimulated' | 'assertActive' | 'beforeSend'>;
 
 /** One explicitly configured RPC endpoint; constructing a client performs no network calls. */
 export function createOreClient(rpcUrl: string) {

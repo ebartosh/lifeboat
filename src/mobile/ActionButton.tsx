@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from 'react';
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, type View, type ViewStyle } from 'react-native';
 import { colors, medium } from './theme';
 
@@ -6,19 +6,20 @@ import { colors, medium } from './theme';
 export let lastCommand: View | null = null;
 export const DialogCommandContext = createContext(false);
 type Variant = 'primary' | 'secondary' | 'quiet' | 'danger';
-export function ActionButton({ title, onPress, disabled = false, variant = 'secondary', style, selected }: {
-  title: string; onPress: () => void; disabled?: boolean; variant?: Variant; style?: ViewStyle; selected?: boolean;
+export function ActionButton({ title, onPress, disabled = false, variant = 'secondary', style, selected, icon }: {
+  title: string; onPress: () => void; disabled?: boolean; variant?: Variant; style?: ViewStyle; selected?: boolean; icon?: ReactNode;
 }) {
   const [focused, setFocused] = useState(false);
   const ref = useRef<View>(null);
   const inDialog = useContext(DialogCommandContext);
   return <Pressable ref={ref} accessibilityRole={selected === undefined ? 'button' : 'tab'} accessibilityState={{ disabled, selected }}
+    accessibilityLabel={icon ? title : undefined}
     disabled={disabled} onPress={() => { if (!inDialog) lastCommand = ref.current; onPress(); }}
     onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
     style={({ pressed }) => [styles.button, variant === 'primary' && styles.primary, style,
       disabled && styles.disabled, pressed && !disabled && styles.pressed, focused && styles.focus]}>
-    <Text style={[styles.label, variant === 'primary' && { color: colors.ink },
-      variant === 'danger' && { color: colors.danger }, disabled && { color: colors.navy }]}>{selected ? '> ' : ''}{title}</Text>
+    {icon ?? <Text style={[styles.label, variant === 'primary' && { color: colors.ink },
+      variant === 'danger' && { color: colors.danger }, disabled && { color: colors.navy }]}>{selected ? '> ' : ''}{title}</Text>}
   </Pressable>;
 }
 const styles = StyleSheet.create({

@@ -1,3 +1,4 @@
+import { testWalletSigning } from './fixtures/signer';
 import {
   address,
   createKeyPairSignerFromPrivateKeyBytes,
@@ -62,7 +63,7 @@ async function executeWith(rpc: FakeTransactionRpc, confirm: () => Promise<boole
   const signer = await createTestSigner();
   return await executeSafeTransaction({
     rpc,
-    wallet: signer.address, getSigner: async () => signer,
+    wallet: signer.address, signWithWallet: testWalletSigning(signer),
     instruction: { programAddress: address("11111111111111111111111111111111") },
     confirm,
     pollIntervalMs: 0,
@@ -201,20 +202,20 @@ describe("safe transaction execution", () => {
     }
     expect(calls).toBe(0);
   });
-  it('rejects a different signing wallet after confirmation', async () => {
+  it('rejects external signing with an unrequested account after confirmation', async () => {
     const rpc = new FakeTransactionRpc();
     const signer = await createTestSigner();
     const other = await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(8));
-    await expect(executeSafeTransaction({ rpc, wallet: signer.address, getSigner: async () => other,
+    await expect(executeSafeTransaction({ rpc, wallet: signer.address, signWithWallet: testWalletSigning(other),
       instruction: { programAddress: address('11111111111111111111111111111111') },
-      confirm: async () => true })).rejects.toThrow(/wallet changed/);
+      confirm: async () => true })).rejects.toThrow(/not a signer/);
     expect(rpc.sendCalls).toBe(0);
   });
-  it('rechecks expiry after asynchronously obtaining the signer', async () => {
+  it('rechecks expiry after asynchronously signing with the wallet', async () => {
     const rpc = new FakeTransactionRpc();
     const signer = await createTestSigner();
     await expect(executeSafeTransaction({ rpc, wallet: signer.address,
-      getSigner: async () => { rpc.blockHeight = 101n; return signer; },
+      signWithWallet: async transaction => { rpc.blockHeight = 101n; return testWalletSigning(signer)(transaction); },
       instruction: { programAddress: address('11111111111111111111111111111111') },
       confirm: async () => true })).rejects.toThrow(/expired before sending/);
     expect(rpc.sendCalls).toBe(0);
@@ -222,7 +223,7 @@ describe("safe transaction execution", () => {
   it('does not expose the original message to simulation callbacks', async () => {
     const rpc = new FakeTransactionRpc();
     const signer = await createTestSigner();
-    await executeSafeTransaction({ rpc, wallet: signer.address, getSigner: async () => signer,
+    await executeSafeTransaction({ rpc, wallet: signer.address, signWithWallet: testWalletSigning(signer),
       instruction: { programAddress: address('11111111111111111111111111111111') },
       beforeSimulation: async transaction => { (transaction.messageBytes as unknown as Uint8Array).fill(0); },
       confirm: async () => true });
@@ -235,14 +236,14 @@ describe("safe transaction execution", () => {
     const data = Uint8Array.of(1, 2, 3);
     const instructions = [{ programAddress: address("11111111111111111111111111111111"), data },
       { programAddress: address("11111111111111111111111111111111"), data: Uint8Array.of(4) }];
-    await executeSafeTransaction({ rpc, wallet: signer.address, getSigner: async () => signer, instructions, confirm: async () => { data[0] = 99; instructions.reverse(); return true; } });
+    await executeSafeTransaction({ rpc, wallet: signer.address, signWithWallet: testWalletSigning(signer), instructions, confirm: async () => { data[0] = 99; instructions.reverse(); return true; } });
     expect(rpc.sentMessage).toEqual(rpc.simulatedMessage);
   });
   it("rejects empty, ambiguous and oversized transactions before simulation", async () => {
     const rpc = new FakeTransactionRpc(); const signer = await createTestSigner();
     const instruction = { programAddress: address("11111111111111111111111111111111"), data: new Uint8Array(1400) };
     for (const options of [{ instructions: [] }, { instruction, instructions: [instruction] }, { instructions: [instruction] }]) {
-      await expect(executeSafeTransaction({ rpc, wallet: signer.address, getSigner: async () => signer, ...options, confirm: async () => true })).rejects.toThrow();
+      await expect(executeSafeTransaction({ rpc, wallet: signer.address, signWithWallet: testWalletSigning(signer), ...options, confirm: async () => true })).rejects.toThrow();
     }
     expect(rpc.simulateCalls).toBe(0); expect(rpc.sendCalls).toBe(0);
   });
@@ -293,7 +294,7 @@ describe("safe transaction execution", () => {
     const signer = await createTestSigner();
     await expect(executeSafeTransaction({
       rpc,
-      wallet: signer.address, getSigner: async () => signer,
+      wallet: signer.address, signWithWallet: testWalletSigning(signer),
       instruction: { programAddress: address("11111111111111111111111111111111") },
       confirm: async () => true,
       pollIntervalMs: 0,

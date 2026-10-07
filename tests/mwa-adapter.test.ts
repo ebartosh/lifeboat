@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   transact: vi.fn(),
   authorize: vi.fn(),
   signTransactions: vi.fn(),
+  getCapabilities: vi.fn(),
   appState: { currentState: 'active', addEventListener: vi.fn() },
 }));
 vi.mock('react-native', () => ({ AppState: mocks.appState }));
@@ -25,13 +26,36 @@ beforeEach(() => {
   vi.spyOn(console, 'info').mockImplementation(() => undefined);
   mocks.appState.currentState = 'active';
   mocks.authorize.mockResolvedValue(result);
+  mocks.getCapabilities.mockResolvedValue({ features: ['solana:signTransactions'], supported_transaction_versions: ['legacy'],
+    supports_sign_and_send_transactions: true, max_transactions_per_request: 1 });
   mocks.transact.mockImplementation(async callback => callback({
-    authorize: mocks.authorize, signTransactions: mocks.signTransactions,
+    authorize: mocks.authorize, signTransactions: mocks.signTransactions, getCapabilities: mocks.getCapabilities,
   }));
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
 describe('MWA connection requests', () => {
+  it('logs only known capability flags, never arbitrary feature or version strings', async () => {
+    const connection = await mwaAdapter.connect();
+    mocks.getCapabilities.mockResolvedValue({ features: ['solana:signTransactions', 'secret-token'],
+      supported_transaction_versions: ['legacy', 0, 'secret-address'],
+      max_transactions_per_request: 'secret-limit', supports_sign_and_send_transactions: true });
+    mocks.signTransactions.mockResolvedValue([{} as Transaction]);
+    await mwaAdapter.sign(connection, {} as Transaction);
+    const trace = vi.mocked(console.info).mock.calls.flat().join('\n');
+    expect(trace).toMatch(/event=capabilities .*signTransactions=yes signAndSend=yes legacy=yes v0=yes maxTransactions=unknown/);
+    expect(trace).not.toContain('secret-');
+  });
+  it('continues the normal signing path when capability discovery is unavailable', async () => {
+    const connection = await mwaAdapter.connect();
+    mocks.getCapabilities.mockRejectedValue(Object.assign(new Error('secret-payload'), { code: -32601 }));
+    mocks.signTransactions.mockResolvedValue([{} as Transaction]);
+    await mwaAdapter.sign(connection, {} as Transaction);
+    expect(mocks.signTransactions).toHaveBeenCalledOnce();
+    const trace = vi.mocked(console.info).mock.calls.flat().join('\n');
+    expect(trace).toMatch(/event=capabilities-failure .*reason=method-not-found protocolCode=-32601/);
+    expect(trace).not.toContain('secret-payload');
+  });
   it('uses the same configured project identity for connection and signing', async () => {
     vi.stubEnv('EXPO_PUBLIC_WALLET_IDENTITY_URI', 'https://lifeboat.example/app');
     const connection = await mwaAdapter.connect();

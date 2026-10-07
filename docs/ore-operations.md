@@ -4,9 +4,11 @@ The app reads ORE rewards through the public Solana mainnet RPC and shows the Mi
 
 ## Claiming rewards
 
+Claim SOL includes only rewards already recorded in `Miner.rewards_sol`. Pending rewards from an uncheckpointed completed mining round are not included or settled by the app; see [recorded versus pending SOL](ore-sol-rewards.md).
+
 “Claim SOL” and “Claim ORE” reread the ORE accounts, build a transaction, and simulate it. Before confirmation, the app shows the wallet, recipient, estimated payout, refining fee, and network fee. Estimates can differ from the on-chain result. Claim ORE sends tokens to the selected wallet's associated token account (ATA); creating that account, if needed, requires SOL for rent.
 
-After confirmation, the app checks the blockhash lifetime, signs locally or opens the external wallet for signing, and verifies the signer's address, message bytes, and Ed25519 signature. It then saves the transaction identifier and submits the transaction through the configured RPC endpoint with preflight. An external wallet only signs the transaction; Lifeboat submits it.
+After confirmation, the app checks the blockhash lifetime, opens the external MWA wallet for signing, and verifies the signer's address, message and Ed25519 signature. A modified response must pass the [bounded wallet-addition policy](solflare-validation.md), repeat simulation and a second fee review before submission. The app then saves the transaction identifier and submits through the configured RPC endpoint with preflight. The external wallet only signs; Lifeboat submits the transaction. Local wallet signing is unavailable.
 
 Canceling before submission sends nothing. If the response is lost, the app goes into the background, or it restarts after submission, use “Check status”. This check uses the saved signature and original RPC endpoint; it does not create another transaction. While the outcome is unknown, another operation is blocked. Blockhash expiration alone does not prove that the transaction did not execute earlier.
 

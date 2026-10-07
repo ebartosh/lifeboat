@@ -1,3 +1,4 @@
+import { testWalletSigning } from './fixtures/signer';
 import { address, blockhash, getSignatureFromTransaction, type Transaction, type Address } from '@solana/kit';
 import { describe, expect, it, vi } from 'vitest';
 import { claimSol, claimOre, readOreRewards } from '../src/operations/ore';
@@ -29,8 +30,8 @@ async function setup(rewards: bigint | null = 123n) {
     sendTransaction: vi.fn(async (tx: Transaction) => { sequence.push('send'); return getSignatureFromTransaction(tx); }),
     getSignatureStatus: vi.fn(async () => ({ error: null, confirmationStatus: 'confirmed' as const })),
   };
-  const getSigner = vi.fn(async () => { sequence.push('signer'); return signer; });
-  return { adapter, rpc, wallet: signer.address, getSigner, sequence };
+  const signWithWallet = vi.fn(async transaction => { sequence.push('sign'); return testWalletSigning(signer)(transaction); });
+  return { adapter, rpc, wallet: signer.address, signWithWallet, sequence };
 }
 
 describe('mobile ORE operations', () => {
@@ -42,7 +43,7 @@ describe('mobile ORE operations', () => {
       const transaction = (call as unknown as [import('@solana/kit').Transaction])[0];
       expect(Object.values(transaction.signatures)).toEqual([null]);
     }
-    expect(f.getSigner).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled();
     expect(f.rpc.simulateTransaction).not.toHaveBeenCalled();
     expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
   });
@@ -69,7 +70,7 @@ describe('mobile ORE operations', () => {
     const result = await readOreRewards({ adapter: f.adapter, rpc: f.rpc, wallet: f.wallet });
     expect(result.claimableSol).toBe(123n);
     expect(result.availableActions).toEqual(['claim-sol', 'claim-ore']);
-    expect(f.getSigner).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled();
     expect(f.rpc.getLatestBlockhash).not.toHaveBeenCalled();
   });
   it.each([null, 0n])('does not build SOL transactions for missing/empty Miner (%s)', async rewards => {
@@ -80,33 +81,33 @@ describe('mobile ORE operations', () => {
     expect(build).not.toHaveBeenCalled();
     expect(f.rpc.getLatestBlockhash).not.toHaveBeenCalled();
     expect(confirm).not.toHaveBeenCalled();
-    expect(f.getSigner).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled();
   });
-  it('returns structured SOL review and asks for the signer only after approval', async () => {
+  it('returns structured SOL review and requests a wallet signature only after approval', async () => {
     const f = await setup();
     const result = await claimSol({ ...f, confirm: async review => {
       f.sequence.push('confirm');
-      expect(f.getSigner).not.toHaveBeenCalled();
+      expect(f.signWithWallet).not.toHaveBeenCalled();
       expect(review).toMatchObject({ action: 'claim-sol', amount: 123n, decimals: 9,
         feeLamports: 5000n, recipient: f.wallet, simulation: { error: null, unitsConsumed: 50n } });
       return true;
     } });
     expect(result).toMatchObject({ status: 'confirmed', estimatedAmount: 123n });
-    expect(f.sequence).toEqual(['simulate', 'confirm', 'signer', 'send']);
+    expect(f.sequence).toEqual(['simulate', 'confirm', 'sign', 'send']);
   });
-  it.each([claimSol, claimOre])('cancellation never loads a key or sends', async claim => {
+  it.each([claimSol, claimOre])('cancellation never requests a wallet signature or sends', async claim => {
     const f = await setup();
     expect((await claim({ ...f, confirm: async () => false })).status).toBe('cancelled');
-    expect(f.getSigner).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled();
     expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
   });
-  it('failed simulation never loads a key, confirms or sends', async () => {
+  it('failed simulation never requests a wallet signature, confirms or sends', async () => {
     const f = await setup();
     f.rpc.simulateTransaction.mockRejectedValue(new Error('offline'));
     const confirm = vi.fn(async () => true);
     await expect(claimSol({ ...f, confirm })).rejects.toThrow(/simulation RPC/);
     expect(confirm).not.toHaveBeenCalled();
-    expect(f.getSigner).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled();
     expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
   });
 });

@@ -36,8 +36,7 @@ export type OreClaimResult =
   | (SafeTransactionResult & { action: OreAction; estimatedAmount: bigint });
 export type OreClaimOptions = Omit<OreReadOptions, 'rpc'> & {
   rpc: AccountReader & TransactionRpc;
-  getSigner?: SafeTransactionOptions['getSigner'];
-  signWithWallet?: SafeTransactionOptions['signWithWallet'];
+  signWithWallet: SafeTransactionOptions['signWithWallet'];
   confirm: (review: OreClaimReview) => Promise<boolean>;
   onSimulated?: (review: OreClaimReview) => void;
   execute?: (options: SafeTransactionOptions) => Promise<SafeTransactionResult>;
@@ -45,9 +44,9 @@ export type OreClaimOptions = Omit<OreReadOptions, 'rpc'> & {
   beforeSend?: SafeTransactionOptions['beforeSend'];
 };
 
-/** Verification and simulation always precede user approval and local signing. */
+/** Verification and simulation always precede user approval and external-wallet signing. */
 export async function claimOreRewards(action: OreAction, options: OreClaimOptions): Promise<OreClaimResult> {
-  const { adapter, rpc, wallet, getSigner, signWithWallet, confirm, onSimulated, execute = executeSafeTransaction } = options;
+  const { adapter, rpc, wallet, signWithWallet, confirm, onSimulated, execute = executeSafeTransaction } = options;
   const status = await adapter.getStatus(rpc, wallet);
   if (!status.miner) return { status: 'nothing-to-claim', reason: 'missing-miner' };
   const estimate = action === 'claim-ore' ? await adapter.getOreClaimEstimate(rpc, status.miner) : null;
@@ -58,7 +57,7 @@ export async function claimOreRewards(action: OreAction, options: OreClaimOption
   const recipient = action === 'claim-sol' ? wallet : await adapter.getOreTokenAddress(wallet);
   const describe = (review: TransactionReview): OreClaimReview => ({ ...review, action, amount,
     decimals: action === 'claim-sol' ? 9 : 11, recipient, ore: estimate ? { ...estimate } : null });
-  const result = await execute({ rpc, wallet, getSigner, signWithWallet, instruction,
+  const result = await execute({ rpc, wallet, signWithWallet, instruction,
     assertActive: options.assertActive, beforeSend: options.beforeSend,
     confirm: review => confirm(describe(review)), onSimulated: review => onSimulated?.(describe(review)) });
   return { ...result, action, estimatedAmount: amount };

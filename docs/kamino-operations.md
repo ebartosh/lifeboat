@@ -6,4 +6,6 @@ WSOL debt can be repaid from a WSOL associated token account (ATA) or from nativ
 
 Support is limited to the pinned main market, vanilla obligations (tag 0, elevation group 0), and 29 classic SPL Token reserves. Available operations and exclusions are listed in the [reserve matrix](kamino-reserve-matrix.md); KLend, Scope, and Farms versions are recorded in [interface provenance](kamino-interface-provenance.md). An action appearing on screen does not guarantee execution: the app checks accounts again and simulates the full transaction before signing.
 
+The [shared SPL/Token-2022 layer](token-infrastructure.md) is currently used by Meteora. It does not enable Token-2022 reserves or new obligation types in Kamino. Future Kamino integration needs separate verification of reserve CPI accounts, extension permissions, net repayment/debt cancellation, repay-all fee gross-up, collateral redemption and withheld vault liquidity.
+
 The RPC endpoint must support filtered `getProgramAccounts` with context, `getMultipleAccounts` with `minContextSlot`, and simulation that returns account data. If the submission outcome is uncertain, a new operation is blocked until the saved signature is checked. The migration history from `Lifeboat-cli` is in the [Kamino plan](kamino-mobile-plan.md).

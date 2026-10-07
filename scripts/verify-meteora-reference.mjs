@@ -9,15 +9,23 @@ import { MeteoraAdapter } from '../src/protocols/meteora/adapter.ts';
 import { prepareWithdrawAll } from '../src/protocols/meteora/withdraw.ts';
 import { dlmmInstruction, binArrayAddress } from '../src/protocols/meteora/instructions.ts';
 import { PROGRAM } from '../src/protocols/meteora/codec.ts';
+import tokenPools from '../tests/fixtures/meteora/token2022-pools.json' with {type:'json'};
 const require = createRequire(new URL('../.cache/meteora-reference/package.json',import.meta.url));
 const sdk = require('@meteora-ag/dlmm');
 const { PublicKey,Connection } = require('@solana/web3.js');
 const BN = require('bn.js');
+const spl = require('@solana/spl-token');
 assert.equal(require('./node_modules/@meteora-ag/dlmm/package.json').version,'1.9.14');
 const program = sdk.createProgram(new Connection('https://api.mainnet-beta.solana.com'));
 const pk = key => new PublicKey(key);
 const report = [];
-for (const options of [{width:70},{lower:-71,width:142,reward:true},{width:1400},{width:1,oneSided:true},{width:71,shares:false}]) {
+for (const capture of tokenPools.captures) {
+  const pool=sdk.decodeAccount(program,'lbPair',Buffer.from(capture.accounts[0].data,'base64'));
+  if(pool.pairType===3) assert.equal(sdk.deriveLbPairWithPresetParamWithIndexKey(pool.baseKey,pool.tokenXMint,pool.tokenYMint,pk(PROGRAM))[0].toBase58(),capture.pool);
+  report.push({pool:capture.name,liveCapturedPda:'match'});
+}
+for (const options of [{width:70},{lower:-71,width:142,reward:true},{width:1400},{width:1,oneSided:true},{width:71,shares:false},
+  {width:71,reward:true,token2022:true,reward2022:true,transferFee:true},{width:1,reward:true,token2022:true,reward2022:true}]) {
   const f = await meteoraFixture(options);
   const position = await new MeteoraAdapter().readPosition(f.rpc,f.signer.address,POSITION);
   const account = f.rpc.accounts.get(POSITION);
@@ -27,7 +35,7 @@ for (const options of [{width:70},{lower:-71,width:142,reward:true},{width:1400}
   assert.deepEqual(wrapped.liquidityShares().slice(0,options.width).map(v=>BigInt(v.toString())),position.state.liquidity_shares);
   const pool = sdk.decodeAccount(program,'lbPair',Buffer.from(f.rpc.accounts.get(f.poolKey).data));
   const arrays = new Map([...position.binArrays].map(([index,key])=>[key,sdk.decodeAccount(program,'binArray',Buffer.from(f.rpc.accounts.get(key).data))]));
-  const mint = t => ({address:pk(t.mint),decimals:t.decimals,isInitialized:true,tlvData:Buffer.alloc(0)});
+  const mint = t => spl.unpackMint(pk(t.mint),{...f.rpc.accounts.get(t.mint),owner:pk(t.token.program),data:Buffer.from(f.rpc.accounts.get(t.mint).data)},pk(t.token.program));
   const clock = {slot:new BN(100),epoch:new BN(0),unixTimestamp:new BN(100)};
   const result = await sdk.processPosition(program,pool,clock,wrapped,mint(position.tokens[0]),mint(position.tokens[1]),
     position.rewards[0]?mint(position.rewards[0]):null,position.rewards[1]?mint(position.rewards[1]):null,arrays);
@@ -40,6 +48,10 @@ for (const options of [{width:70},{lower:-71,width:142,reward:true},{width:1400}
   const ix=plan.instructions.at(-1);
   const name=plan.step.kind==='remove'?'removeLiquidityByRange2':'closePosition2';
   const definition=program.idl.instructions.find(x=>x.name===name);
+  for (const [index,account] of definition.accounts.entries()) {
+    if (account.name === 'tokenXProgram') assert.equal(ix.accounts[index].address,f.rpc.accounts.get(position.tokens[0].mint).owner);
+    if (account.name === 'tokenYProgram') assert.equal(ix.accounts[index].address,f.rpc.accounts.get(position.tokens[1].mint).owner);
+  }
   const strict=Object.fromEntries(definition.accounts.map((a,i)=>[a.name,pk(ix.accounts[i].address)]));
   const method=plan.step.kind==='remove'?program.methods.removeLiquidityByRange2(plan.step.lower,plan.step.upper,10000,{slices:[]}):program.methods.closePosition2();
   const reference=await method.accountsStrict(strict).remainingAccounts(ix.accounts.slice(definition.accounts.length).map(a=>({pubkey:pk(a.address),isSigner:false,isWritable:true}))).instruction();

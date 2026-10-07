@@ -5,18 +5,18 @@ import {
   setTransactionMessageFeePayer, setTransactionMessageLifetimeUsingBlockhash,
   signTransaction, verifySignature,
 } from '@solana/kit';
-import { createOreAdapter } from '../protocols/ore-bundle';
-import { readOreRewards } from '../operations/ore';
-import { createOreClient } from '../operations/client';
-import { parseKeypair } from '../core/wallet';
-import fixture from './runtime-fixture.json' with { type: 'json' };
+import { createOreAdapter } from '../../src/protocols/ore-bundle';
+import { readOreRewards } from '../../src/operations/ore';
+import { createOreClient } from '../../src/operations/client';
+import { createTestSigner } from './signer';
+import fixture from './runtime.json' with { type: 'json' };
 
 export type Check = { name: string; passed: boolean };
 const same = (a: ArrayLike<number>, b: ArrayLike<number>) =>
   a.length === b.length && Array.from(a).every((value, i) => value === b[i]);
 
 /** Entirely offline: no RPC client, simulation or send method. */
-export async function checkRuntime(keypairJson: string): Promise<Check[]> {
+export async function checkRuntime(): Promise<Check[]> {
   // Load the complete mobile composition (including RPC) without contacting any endpoint.
   createOreClient('http://127.0.0.1:8899');
   const results: Check[] = [];
@@ -40,7 +40,7 @@ export async function checkRuntime(keypairJson: string): Promise<Check[]> {
     bps: [16, 39, 0, 0, 0, 0, 0, 0],
   }), [4, 16, 39, 0, 0, 0, 0, 0, 0]));
 
-  const signer = await parseKeypair(keypairJson);
+  const signer = await createTestSigner();
   const instruction = await ore.buildInstruction('claimSol', {}, { signer: signer.address });
   const message = appendTransactionMessageInstruction(instruction,
     setTransactionMessageLifetimeUsingBlockhash({
@@ -69,6 +69,3 @@ export async function checkRuntime(keypairJson: string): Promise<Check[]> {
   check('ORE operations: missing Miner (offline)', missing.miner === null && missing.availableActions.length === 0);
   return results;
 }
-
-// Public, deterministic test key only. Never fund this address.
-export const testKeypairJson = () => JSON.stringify(fixture.keypair);

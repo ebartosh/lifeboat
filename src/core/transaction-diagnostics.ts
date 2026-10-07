@@ -1,12 +1,14 @@
 import type { SignatureCheckFailure } from './signed-transaction';
 import { getCompiledTransactionMessageDecoder, type Transaction } from '@solana/kit';
 import { walletProtocolErrorCode } from './wallet-errors';
+import { instructionDiagnosticDetails, lighthouseDiagnosticDetails } from './instruction-diagnostics';
 
 type TransactionEvent = 'start' | 'blockhash-start' | 'message-build' | 'simulation-start'
   | 'simulation-validation' | 'fee-read' | 'review-wait' | 'review-approved' | 'cancelled'
   | 'pre-sign-height' | 'signing-start' | 'signing-result' | 'signature-validation'
   | 'post-sign-height' | 'pending-save' | 'pre-send-height' | 'send-start' | 'send-result'
-  | 'confirmation-start' | 'confirmed';
+  | 'confirmation-start' | 'confirmed' | 'wallet-simulation-start' | 'wallet-simulation-validation'
+  | 'wallet-review-wait' | 'wallet-review-approved';
 let attempt = 0;
 
 /** Classify errors locally; raw messages, RPC URLs, and payloads never enter logs. */
@@ -41,7 +43,7 @@ export function startTransactionTrace() {
   const id = ++attempt;
   const started = Date.now();
   let stage: TransactionEvent = 'start';
-  const record = (event: TransactionEvent | 'failure' | 'program-error' | 'signature-rejected' | 'message-shape', detail = '') => {
+  const record = (event: TransactionEvent | 'failure' | 'program-error' | 'signature-rejected' | 'message-shape' | 'instruction-detail' | 'guard-detail', detail = '') => {
     console.info(`[LifeboatTransaction] trace=v1 attempt=${id} event=${event} elapsedMs=${Date.now() - started}${detail}`);
   };
   record('start');
@@ -49,6 +51,10 @@ export function startTransactionTrace() {
     event: (event: TransactionEvent) => { stage = event; record(event); },
     failure: (error: unknown) => record('failure', ` stage=${stage} reason=${transactionFailureReason(error)}`),
     signatureRejected: (check: SignatureCheckFailure) => record('signature-rejected', ` check=${check}`),
+    instructionDetails: (original: Transaction, returned: Transaction) => {
+      for (const detail of instructionDiagnosticDetails(original, returned)) record('instruction-detail', detail);
+      for (const detail of lighthouseDiagnosticDetails(original, returned)) record('guard-detail', detail);
+    },
     messageShape: (side: 'original' | 'returned', transaction: Transaction) => {
       // Read only structure. Never emit addresses, amounts, instruction data, or signatures.
       try {

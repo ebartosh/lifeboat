@@ -10,8 +10,7 @@ export type UnstakeReview = TransactionReview & {
 
 export async function unstakeOre(options: {
   rpc: AccountReader & TransactionRpc; wallet: Address; amount: string;
-  getSigner?: SafeTransactionOptions['getSigner'];
-  signWithWallet?: SafeTransactionOptions['signWithWallet'];
+  signWithWallet: SafeTransactionOptions['signWithWallet'];
   confirm: (review: UnstakeReview) => Promise<boolean>;
   assertActive?: SafeTransactionOptions['assertActive'];
   beforeSend?: SafeTransactionOptions['beforeSend'];

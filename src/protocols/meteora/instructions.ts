@@ -1,6 +1,7 @@
 import { AccountRole, address, getAddressEncoder, getProgramDerivedAddress, type Address, type Instruction } from '@solana/kit';
 import idl from './dlmm.idl.json';
-import { ATA, check, PROGRAM, TOKEN, ZERO } from './codec';
+import { check, PROGRAM, TOKEN } from './codec';
+import { associatedTokenAddress, createAssociatedTokenIdempotent, type TokenProgram } from '../../core/tokens';
 const encoder = getAddressEncoder();
 export function integerBytes(value: bigint, size: number) {
   const output = new Uint8Array(size);
@@ -12,14 +13,9 @@ export async function pda(seeds: readonly (Uint8Array | string)[], program = PRO
 }
 export const keyBytes = (key: Address) => Uint8Array.from(encoder.encode(key));
 export const binArrayAddress = (pool: Address, index: number) => pda(['bin_array', keyBytes(pool), integerBytes(BigInt(index), 8)]);
-export const ataAddress = (wallet: Address, mint: Address) => pda([keyBytes(wallet), keyBytes(TOKEN), keyBytes(mint)], ATA);
-export function createAta(wallet: Address, mint: Address, ata: Address): Instruction {
-  return { programAddress: ATA, data: new Uint8Array([1]), accounts: [
-    { address: wallet, role: AccountRole.WRITABLE_SIGNER }, { address: ata, role: AccountRole.WRITABLE },
-    { address: wallet, role: AccountRole.READONLY }, { address: mint, role: AccountRole.READONLY },
-    { address: ZERO, role: AccountRole.READONLY }, { address: TOKEN, role: AccountRole.READONLY },
-  ] };
-}
+export const ataAddress = (wallet: Address, mint: Address, program: TokenProgram = TOKEN) => associatedTokenAddress(wallet, mint, program);
+export const createAta = (wallet: Address, mint: Address, ata: Address, program: TokenProgram = TOKEN) =>
+  createAssociatedTokenIdempotent(wallet, wallet, mint, ata, program);
 export function computeBudget(): Instruction {
   const data = new Uint8Array(5); data[0] = 2;
   new DataView(data.buffer).setUint32(1, 1_400_000, true);

@@ -1,3 +1,4 @@
+import { testWalletSigning } from './fixtures/signer';
 import { getSignatureFromTransaction, type Transaction } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { executeSafeTransaction } from '../src/core/transaction';
@@ -16,7 +17,7 @@ describe('Kamino mobile transaction plans', () => {
       { owner: TOKEN, executable: false, data: tokenBytes(f.wallet.address, f.mint, 900_000_000n) },
     ];
     const result = await executeSafeTransaction({ rpc: f.rpc, wallet: f.wallet.address,
-      getSigner: async () => f.wallet, instructions: plan.instructions,
+      signWithWallet: testWalletSigning(f.wallet), instructions: plan.instructions,
       simulationAccounts: plan.simulationAccounts, validateSimulation: plan.validateSimulation,
       confirm: async () => { expect(f.rpc.simulations).toHaveLength(1); return false; } });
     expect(result.status).toBe('cancelled');
@@ -33,7 +34,7 @@ describe('Kamino mobile transaction plans', () => {
     f.rpc.finalAccounts = [null,
       { owner: TOKEN, executable: false, data: tokenBytes(f.wallet.address, f.mint, plan.estimate) }];
     const result = await executeSafeTransaction({ rpc: f.rpc, wallet: f.wallet.address,
-      getSigner: async () => f.wallet, instructions: plan.instructions,
+      signWithWallet: testWalletSigning(f.wallet), instructions: plan.instructions,
       simulationAccounts: plan.simulationAccounts, validateSimulation: plan.validateSimulation,
       confirm: async () => false });
     expect(result.status).toBe('cancelled');
@@ -58,7 +59,7 @@ describe('Kamino mobile transaction plans', () => {
       return getSignatureFromTransaction(transaction);
     };
     const result = await executeSafeTransaction({ rpc: f.rpc, wallet: f.wallet.address,
-      getSigner: async () => f.wallet, instructions: plan.instructions,
+      signWithWallet: testWalletSigning(f.wallet), instructions: plan.instructions,
       simulationAccounts: plan.simulationAccounts, validateSimulation: plan.validateSimulation,
       beforeSimulation: plan.beforeSimulation, additionalSigners: plan.additionalSigners,
       confirm: async () => true });

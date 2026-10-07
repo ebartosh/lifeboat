@@ -1,5 +1,7 @@
 # Kamino Lending migration plan for Lifeboat on Android
 
+> Historical migration plan and acceptance results as of October 2, 2026. RPC configuration, local wallet signing and routine release-build requirements below describe that stage. The current app uses the public mainnet RPC and external MWA wallets only; temporary Kamino account signers remain local and are not persisted. Use [Kamino operations](kamino-operations.md), [Wallets and RPC](wallet-and-rpc.md), and the [development guide](development.md) for current behavior and build instructions.
+
 Status as of 2026-10-02: implementation stages 1–7 have been added to the mobile project.
 The adapter and local interfaces, RPC reading, positions screen, repayment from
 ATA and native SOL, collateral withdrawal, and the shared pending-operation
@@ -114,7 +116,7 @@ fixed RPC fixtures; reading requests neither signatures nor submission.
    Verify reduced debt and unchanged collateral; require zero remaining selected
    debt for `all`. Before confirmation, show wallet, position, reserve, source,
    expected debit, and fee estimate.
-3. Sign exactly the simulated message with a local key or MWA; verify address,
+3. Request the external MWA wallet signature; verify address,
    bytes, and Ed25519. Submit through the same RPC with preflight and check confirmation.
 
 **Done when:** tests reject invalid graphs, insufficient funds, message changes,

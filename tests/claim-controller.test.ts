@@ -1,3 +1,4 @@
+import { testWalletSigning } from './fixtures/signer';
 import { address, blockhash, getSignatureFromTransaction, signTransaction, type Address, type Transaction } from '@solana/kit';
 import { describe, expect, it, vi } from 'vitest';
 import { ClaimController, type ClaimState } from '../src/mobile/claim-controller';
@@ -9,6 +10,7 @@ import { createOreAdapter } from '../src/protocols/ore-bundle';
 import { createMinerFixture } from './fixtures/miner';
 import { createTreasuryFixture } from './fixtures/treasury';
 import { createTestSigner } from './fixtures/signer';
+import { signWithAdditions } from './fixtures/wallet-additions';
 
 async function setup() {
   const signer = await createTestSigner();
@@ -46,11 +48,11 @@ async function setup() {
   } satisfies ConstructorParameters<typeof ClaimController>[0];
   const controller = new ClaimController(deps, publish);
   await controller.restore();
-  const getSigner = vi.fn(async () => signer);
+  const signWithWallet = vi.fn(testWalletSigning(signer));
   const start = (action: 'claim-sol' | 'claim-ore' = 'claim-sol') =>
-    controller.start('https://example.com/secret', signer.address, action, getSigner);
+    controller.start('https://example.com/secret', signer.address, action, { signWithWallet });
   const review = async () => { await vi.waitFor(() => expect(states.at(-1)?.phase).toBe('review')); };
-  return { controller, deps, rpc, store, io, files, states, start, review, getSigner, signer };
+  return { controller, deps, rpc, store, io, files, states, start, review, signWithWallet, signer };
 }
 
 describe('mobile claim lifecycle with real test-key signing', () => {
@@ -89,7 +91,7 @@ describe('mobile claim lifecycle with real test-key signing', () => {
   });
   it.each(['claim-sol', 'claim-ore'] as const)('persists before sending and confirms %s once', async action => {
     const f = await setup(); const operation = f.start(action); await f.review();
-    expect(f.getSigner).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled();
     expect(f.states.at(-1)?.review).toMatchObject({ action, feeLamports: 5000n });
     await f.start(action); // double tap cannot start another preparation
     f.controller.answer(true); f.controller.answer(true);
@@ -99,11 +101,11 @@ describe('mobile claim lifecycle with real test-key signing', () => {
     expect(await f.store.load()).toBeNull();
     expect(f.controller.locked).toBe(false);
   });
-  it('cancels without reading a key or sending', async () => {
+  it('cancels without requesting a wallet signature or sending', async () => {
     const f = await setup(); const operation = f.start(); await f.review();
     f.controller.answer(false); await operation;
     expect(f.states.at(-1)?.phase).toBe('cancelled');
-    expect(f.getSigner).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
   });
   it('backgrounding invalidates approval and a late approve cannot revive it', async () => {
     const f = await setup(); const operation = f.start(); await f.review();
@@ -112,18 +114,37 @@ describe('mobile claim lifecycle with real test-key signing', () => {
     expect(f.states.at(-1)?.phase).toBe('cancelled');
     expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
   });
-  it('backgrounding during signer access prevents send', async () => {
+  it('staying in the background after wallet signing prevents send', async () => {
     const f = await setup();
-    f.getSigner.mockImplementation(async () => { f.controller.setForeground(false); return f.signer; });
+    f.signWithWallet.mockImplementation(async transaction => { f.controller.setForeground(false); return testWalletSigning(f.signer)(transaction); });
     const operation = f.start(); await f.review(); f.controller.answer(true); await operation;
     expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
-    expect(f.states.at(-1)?.phase).toBe('cancelled');
+    expect(f.states.at(-1)?.phase).toBe('error');
   });
-  it('rejects expiry after confirmation without reading a key', async () => {
+  it('explains expiry during the second fee review and clears the unsent signature', async () => {
+    const f = await setup();
+    const signWithWallet = vi.fn((tx: Transaction) => signWithAdditions(tx, f.signer));
+    f.rpc.getTransactionFee.mockResolvedValueOnce(5000n).mockResolvedValue(29000n);
+    const operation = f.controller.start('https://example.com/secret', f.signer.address, 'claim-sol', {signWithWallet});
+    await f.review(); f.controller.answer(true);
+    await vi.waitFor(() => expect(f.states.at(-1)?.review?.walletChanges).toBeDefined());
+    f.rpc.getBlockHeight.mockResolvedValue(101n); f.controller.answer(true); await operation;
+    expect(signWithWallet).toHaveBeenCalledTimes(1);
+    expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
+    expect(f.io.write.mock.calls.some(([name]) => name === 'pending.json')).toBe(true);
+    expect(await f.store.load()).toBeNull();
+    expect(f.states.at(-1)).toMatchObject({phase:'error',message:expect.stringContaining('Transaction expired. Nothing was sent')});
+    expect(f.states.at(-1)?.message).toContain('Check the details before approving');
+    expect(f.controller.locked).toBe(false);
+  });
+  it('rejects expiry after confirmation without requesting a wallet signature', async () => {
     const f = await setup(); const operation = f.start(); await f.review();
     f.rpc.getBlockHeight.mockResolvedValue(101n); f.controller.answer(true); await operation;
-    expect(f.getSigner).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
     expect(f.states.at(-1)?.phase).toBe('error');
+    expect(f.states.at(-1)?.message).toMatch(/Transaction expired\. Nothing was sent/);
+    expect(f.states.at(-1)?.message).toContain('without long pauses');
+    expect(f.controller.locked).toBe(false);
   });
   it('storage failure prevents send', async () => {
     const f = await setup(); f.io.write.mockRejectedValueOnce(new Error('disk full'));
@@ -171,7 +192,7 @@ describe('mobile claim lifecycle with real test-key signing', () => {
     const states: ClaimState[] = [];
     const restarted = new ClaimController(f.deps, state => states.push(state));
     await restarted.restore();
-    await restarted.start('https://another-rpc', address('11111111111111111111111111111111'), 'claim-ore', f.getSigner);
+    await restarted.start('https://another-rpc', address('11111111111111111111111111111111'), 'claim-ore', { signWithWallet: f.signWithWallet });
     await restarted.check();
     expect(f.deps.status).toHaveBeenCalledWith(pending);
     expect(f.rpc.sendTransaction).toHaveBeenCalledTimes(1);
@@ -187,7 +208,7 @@ describe('mobile claim lifecycle with real test-key signing', () => {
     const states: ClaimState[] = [];
     const restarted = new ClaimController(f.deps, state => states.push(state));
     await restarted.restore();
-    await restarted.start('https://example.com', f.signer.address, 'unstake', f.getSigner, '1');
+    await restarted.start('https://example.com', f.signer.address, 'unstake', { signWithWallet: f.signWithWallet }, '1');
     expect(states.at(-1)?.phase).toBe('unknown');
     expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
     await restarted.check();
@@ -200,6 +221,8 @@ describe('mobile claim lifecycle with real test-key signing', () => {
     f.rpc.getSignatureStatus.mockResolvedValue(null); f.rpc.getBlockHeight.mockResolvedValue(101n);
     await f.controller.check(); await f.start();
     expect(f.states.at(-1)?.phase).toBe('unknown'); expect(f.controller.locked).toBe(true);
+    expect(f.states.at(-1)?.message).toContain('Resubmission is blocked');
+    expect(f.states.at(-1)?.message).not.toMatch(/Nothing was sent|without long pauses/);
     expect(f.rpc.sendTransaction).toHaveBeenCalledTimes(1);
   });
   it('distinguishes confirmed on-chain failure from unknown transport failure', async () => {
@@ -222,6 +245,6 @@ describe('mobile claim lifecycle with real test-key signing', () => {
   it('simulation failure never reaches review or signer', async () => {
     const f = await setup(); f.rpc.simulateTransaction.mockResolvedValue({ error: 'failure', logs: ['secret'] });
     await f.start(); expect(f.states.at(-1)?.phase).toBe('error');
-    expect(f.getSigner).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
+    expect(f.signWithWallet).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
   });
 });

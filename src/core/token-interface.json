@@ -1,0 +1,14 @@
+{
+  "sourceRepository": "https://github.com/solana-program/token-2022",
+  "sourceCommit": "1436a91674fb3679e6473661f5f1e6a6b41f093d",
+  "tokenClientVersion": "0.4.15",
+  "tokenClientIntegrity": "sha512-3Lof3mNov8NVQ3PalIWb1Jgr/TZ6lYM+/sexv2TLqdhNFVth2OfWmH3d7QucgMjSbokkjNiNlRr6I8Fd269uaw==",
+  "sources": {
+    "interface/src/extension/mod.rs": "d273a87617b06f4a813a2c3c3bbab8180a0a4c657d836a95475259eca9e40f5a",
+    "interface/src/extension/transfer_fee/mod.rs": "2f51ac04733271b7578f0fb8c05805aac237f1521ffa1505b4055c03b6cbda5c",
+    "program/src/processor.rs": "57e451a47aba32e0eac5ab079696b5ff6ac96532b19de5cec4d6bc610fe4ef04"
+  },
+  "runtimeSdkDependency": false,
+  "mintExtensionsDecodedForWithdrawal": ["TransferFeeConfig", "MetadataPointer", "TokenMetadata"],
+  "accountExtensionsDecodedForWithdrawal": ["TransferFeeAmount", "ImmutableOwner"]
+}

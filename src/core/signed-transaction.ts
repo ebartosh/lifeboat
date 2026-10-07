@@ -12,6 +12,14 @@ export async function checkSignedTransaction(unsigned: Transaction, signed: Tran
   if (!(signed.messageBytes instanceof Uint8Array)) return 'message-type';
   if (signed.messageBytes.length !== unsigned.messageBytes.length) return 'message-length';
   if (!signed.messageBytes.every((byte, index) => byte === unsigned.messageBytes[index])) return 'message-bytes';
+  return checkTransactionSignatures(signed, expectedSigners);
+}
+
+/** Verify signatures independently after a separate, explicit message-compatibility policy. */
+export async function checkTransactionSignatures(signed: Transaction, expectedSigners: readonly Address[]): Promise<SignatureCheckFailure | null> {
+  if (!signed.signatures || Object.keys(signed.signatures).length !== expectedSigners.length ||
+      expectedSigners.some(signer => !(signer in signed.signatures))) return 'signer-set';
+  if (!(signed.messageBytes instanceof Uint8Array)) return 'message-type';
   for (const signer of expectedSigners) {
     const bytes = signed.signatures[signer];
     if (!(bytes instanceof Uint8Array)) return 'signature-type';

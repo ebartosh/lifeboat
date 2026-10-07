@@ -3,6 +3,7 @@ import { adapter, fixture, POSITION, USDC, WSOL, captureAccounts, pubkey, u64 } 
 import { ZERO, SCOPE, support } from "../src/protocols/kamino/accounts";
 import { SF, U64_MAX, ceilDiv, collateralForAmount, parseAmount, redeemAmount, remainingWithdrawalCap } from "../src/protocols/kamino/math";
 import type { Reserve } from "../src/protocols/kamino/state";
+import { TOKEN_2022_PROGRAM } from '../src/core/tokens';
 
 describe("pinned KLend account interface", () => {
   it("decodes independently captured market/reserve/Scope/Farms accounts and exact sizes", () => {
@@ -35,6 +36,8 @@ describe("pinned KLend account interface", () => {
     ["elevation group", (f: Awaited<ReturnType<typeof fixture>>) => { f.obligation[2285] = 1; }, /elevation/],
     ["wrong reserve link", (f: Awaited<ReturnType<typeof fixture>>) => { pubkey(f.rpc.accounts.get(USDC)!.data, 32, ZERO); }, /market/],
     ["wrong mint", (f: Awaited<ReturnType<typeof fixture>>) => { pubkey(f.rpc.accounts.get(USDC)!.data, 128, ZERO); }, /mint/],
+    ["Token-2022 mint", (f: Awaited<ReturnType<typeof fixture>>) => { f.rpc.accounts.get(f.mint)!.owner = TOKEN_2022_PROGRAM; }, /owner/],
+    ["Token-2022 ATA", (f: Awaited<ReturnType<typeof fixture>>) => { f.rpc.accounts.get(f.ata)!.owner = TOKEN_2022_PROGRAM; }, /owner/],
     ["wrong oracle owner", (f: Awaited<ReturnType<typeof fixture>>) => {
       for (const a of f.rpc.accounts.values()) if (a?.owner === SCOPE && !a.executable) a.owner = ZERO;
     }, /owner/],

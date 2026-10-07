@@ -1,4 +1,4 @@
-import { createKeyPairSignerFromPrivateKeyBytes } from "@solana/kit";
+import { createKeyPairSignerFromPrivateKeyBytes, signTransaction, type KeyPairSigner, type Transaction } from "@solana/kit";
 
 export async function createTestSigner() {
   return await createKeyPairSignerFromPrivateKeyBytes(
@@ -6,3 +6,7 @@ export async function createTestSigner() {
     false,
   );
 }
+
+/** Emulates an external wallet response using public test signing material. */
+export const testWalletSigning = (signer: KeyPairSigner) => (transaction: Transaction) =>
+  signTransaction([signer.keyPair], transaction);

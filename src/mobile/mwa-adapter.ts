@@ -63,6 +63,9 @@ export const mwaAdapter: WalletAdapter = {
       const identity = walletIdentity();
       const signed = await transact(async wallet => {
         trace.event('session-ready');
+        // Diagnostic only: a capabilities failure must not change authorization or signing behavior.
+        try { trace.capabilities(await wallet.getCapabilities()); }
+        catch (error) { trace.capabilitiesFailure(error); }
         phase = 'authorization';
         let result;
         try {

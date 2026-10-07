@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { createOreAdapter } from '../src/protocols/ore-bundle.ts';
 import { createMinerFixture } from '../tests/fixtures/miner.ts';
 import { createTreasuryFixture } from '../tests/fixtures/treasury.ts';
-import fixture from '../src/diagnostics/runtime-fixture.json' with { type: 'json' };
+import fixture from '../tests/fixtures/runtime.json' with { type: 'json' };
 import { address, appendTransactionMessageInstructions, blockhash, compileTransaction, createTransactionMessage,
   getTransactionDecoder, getSignatureFromTransaction, getPublicKeyFromAddress, pipe,
   setTransactionMessageFeePayer, setTransactionMessageLifetimeUsingBlockhash, verifySignature } from '@solana/kit';

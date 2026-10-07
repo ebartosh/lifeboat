@@ -9,6 +9,7 @@ import { kaminoOperationHint, type KaminoRequest, type KaminoReview } from '../o
 import type { SafeTransactionResult } from '../core/transaction';
 import type { PendingClaim, PendingStore } from './pending-store';
 import type { MeteoraExecutionInput, MeteoraOperation, MeteoraReview } from '../operations/meteora';
+import { unsentExpiryHint } from './operation-error';
 
 export type ClaimState = {
   phase: 'idle' | 'preparing' | 'review' | 'signing' | 'sending' | 'checking' | 'unknown' | 'confirmed' | 'failed'
@@ -19,7 +20,7 @@ export type ClaimState = {
   signature?: Signature;
   message?: string;
 };
-type ClaimInput = Pick<OreClaimOptions, 'wallet' | 'getSigner' | 'signWithWallet' | 'confirm' | 'assertActive' | 'beforeSend'>;
+type ClaimInput = Pick<OreClaimOptions, 'wallet' | 'signWithWallet' | 'confirm' | 'assertActive' | 'beforeSend'>;
 export type ClaimDependencies = {
   store: PendingStore;
   execute: (url: string, action: OreAction, input: ClaimInput) => Promise<OreClaimResult>;
@@ -79,7 +80,7 @@ export class ClaimController {
   }
 
   async startMeteora(url: string, wallet: Address, position: Address,
-    signing: Pick<ClaimInput,'getSigner'|'signWithWallet'>) {
+    signing: Pick<ClaimInput,'signWithWallet'>) {
     if (!this.ready || this.busy || this.pending || !this.foreground || this.state.phase === 'blocked') return;
     if (this.operation && (this.operation.wallet !== wallet || this.operation.position !== position || this.operation.rpcUrl !== url)) {
       this.update({phase:'partial',operation:this.operation,message:'Reconnect the saved wallet and use the saved RPC to resume this withdrawal.'}); return;
@@ -95,13 +96,13 @@ export class ClaimController {
       const operation: MeteoraOperation = this.operation ?? {version:1,id:`meteora-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         wallet,position,rpcUrl:url,createdAt:Date.now(),completed:[]};
       await this.deps.store.saveMeteora(operation); this.operation = operation;
-      const result = await this.deps.meteora(url,{wallet,getSigner:signing.getSigner,
-        signWithWallet:signing.signWithWallet ? async transaction => {
+      const result = await this.deps.meteora(url,{wallet,
+        signWithWallet:async transaction => {
           this.walletHandoff = true;
-          try { const signed = await signing.signWithWallet!(transaction);
+          try { const signed = await signing.signWithWallet(transaction);
             if (!this.foreground) throw new Error('Wallet did not return to app'); return signed; }
           finally { this.walletHandoff = false; }
-        } : undefined, operation, assertActive,
+        }, operation, assertActive,
         progress:record => this.update({phase:'preparing',operation:record}),
         confirm:review => { assertActive(); return new Promise<boolean>(resolve => {
           this.decision = resolve; this.update({phase:'review',review,operation:this.operation ?? undefined});
@@ -142,7 +143,7 @@ export class ClaimController {
         message:'The step result is unknown. Check the saved signature before continuing. Resubmission is blocked.'});
       else this.update({phase:this.operation?.completed.length ? 'partial' : error instanceof OnChainFailure ? 'failed' : revision !== this.revision ? 'cancelled' : 'error',operation:this.operation ?? undefined,
         message:error instanceof OnChainFailure ? 'The step failed on-chain; a network fee may have been charged. Confirmed steps are kept.'
-          : error instanceof Error ? error.message : 'Could not prepare the remaining withdrawal steps.'});
+          : unsentExpiryHint(error, true) ?? (error instanceof Error ? error.message : 'Could not prepare the remaining withdrawal steps.')});
     } finally { this.busy = false; this.walletHandoff = false; this.decision = undefined; }
   }
 
@@ -154,7 +155,7 @@ export class ClaimController {
   }
 
   async start(url: string, wallet: Address, action: OreAction | 'unstake' | 'kamino-repay' | 'kamino-withdraw',
-    signing: Pick<ClaimInput, 'getSigner' | 'signWithWallet'> | NonNullable<ClaimInput['getSigner']>, amount?: string,
+    signing: Pick<ClaimInput, 'signWithWallet'>, amount?: string,
     kaminoRequest?: KaminoRequest) {
     if (this.locked || !this.foreground) return;
     this.busy = true;
@@ -164,17 +165,16 @@ export class ClaimController {
     };
     this.update({ phase: 'preparing' });
     try {
-      const signingOptions = typeof signing === 'function' ? { getSigner: signing } : signing;
-      const input = { wallet, ...signingOptions,
-        signWithWallet: signingOptions.signWithWallet ? async (transaction: Transaction) => {
+      const input = { wallet,
+        signWithWallet: async (transaction: Transaction) => {
           this.walletHandoff = true;
           try {
-            const signed = await signingOptions.signWithWallet!(transaction);
+            const signed = await signing.signWithWallet(transaction);
             if (!this.foreground) throw new Error('Wallet did not return to app');
             return signed;
           }
           finally { this.walletHandoff = false; }
-        } : undefined,
+        },
         assertActive,
         confirm: (review: OreClaimReview | UnstakeReview | KaminoReview) => {
           assertActive();
@@ -210,7 +210,8 @@ export class ClaimController {
       if (this.pending && error instanceof NotSentError) {
         try {
           await this.deps.store.clear(); this.pending = null;
-          this.update({ phase: revision !== this.revision ? 'cancelled' : 'error', message: 'Nothing was sent. Prepare the operation again.' });
+          this.update({ phase: revision !== this.revision ? 'cancelled' : 'error',
+            message: unsentExpiryHint(error) ?? 'Nothing was sent. Prepare the operation again.' });
         } catch { this.update({ phase: 'unknown', pending: this.pending ?? undefined, message: 'Could not delete the record of an unsent operation. New submissions are blocked.' }); }
       } else if (this.pending && error instanceof OnChainFailure) {
         try {
@@ -221,11 +222,11 @@ export class ClaimController {
       } else if (this.pending) this.update({ phase: 'unknown', pending: this.pending,
         message: 'The result is unknown. Check the saved signature; do not repeat the operation.' });
       else this.update(revision !== this.revision ? { phase: 'cancelled' } : { phase: 'error',
-        message: error instanceof Error && /Signing (account|wallet) changed|External wallet changed/.test(error.message)
+        message: unsentExpiryHint(error) ?? (error instanceof Error && /Signing (account|wallet) changed|External wallet changed/.test(error.message)
           ? 'The external wallet account has changed. Reconnect it, refresh rewards and retry the operation.'
           : action === 'kamino-repay' || action === 'kamino-withdraw'
             ? kaminoOperationHint(error)
-            : 'The operation was not sent. Check the RPC, balance and position state, then prepare it again.' });
+            : 'The operation was not sent. Check the RPC, balance and position state, then prepare it again.') });
     } finally { this.walletHandoff = false; this.decision = undefined; this.busy = false; }
   }
 

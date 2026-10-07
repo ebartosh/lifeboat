@@ -2,12 +2,13 @@ import { address, getAddressDecoder, type Address } from '@solana/kit';
 import type { ChainAccount } from '../../core/accounts';
 import { VerificationError } from '../../core/errors';
 import idl from './dlmm.idl.json';
+import { decodeTokenAccount, decodeTokenMint, TOKEN_PROGRAM, TOKEN_2022_PROGRAM, ASSOCIATED_TOKEN_PROGRAM } from '../../core/tokens';
 
 export const PROGRAM = address(idl.address);
 export const ZERO = address('11111111111111111111111111111111');
-export const TOKEN = address('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-export const TOKEN_2022 = address('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
-export const ATA = address('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+export const TOKEN = TOKEN_PROGRAM;
+export const TOKEN_2022 = TOKEN_2022_PROGRAM;
+export const ATA = ASSOCIATED_TOKEN_PROGRAM;
 export const CLOCK = address('SysvarC1ock11111111111111111111111111111111');
 export const SYSVAR = address('Sysvar1111111111111111111111111111111111111');
 export const WSOL = address('So11111111111111111111111111111111111111112');
@@ -99,18 +100,15 @@ export type Bin = { amount_x: bigint; amount_y: bigint; liquidity_supply: bigint
   limit_order_fee_ask_side: bigint; limit_order_fee_bid_side: bigint };
 export type BinArray = { index: bigint; lb_pair: Address; bins: Bin[] };
 export type TokenState = { amount: bigint };
+// Classic-only compatibility helpers for the public SPL capture script.
 export function tokenState(account: ChainAccount | null | undefined, mint: Address, authority: Address): TokenState {
-  check(account && account.owner === TOKEN && !account.executable && account.data.length === 165, 'invalid SPL token account or Token-2022 account');
-  const d = account.data, v = new DataView(d.buffer, d.byteOffset, d.byteLength);
-  check(getAddressDecoder().decode(d.subarray(0,32)) === mint && getAddressDecoder().decode(d.subarray(32,64)) === authority, 'token mint/authority mismatch');
-  check(d[108] === 1 && v.getUint32(72,true) === 0 && v.getUint32(129,true) === 0, 'frozen, delegated or alternate close-authority token account');
-  check([0,1].includes(v.getUint32(109,true)), 'invalid native token account');
-  return { amount: v.getBigUint64(64,true) };
+  check(account?.owner === TOKEN, 'invalid ordinary SPL token account');
+  const state = decodeTokenAccount(account);
+  check(state.mint === mint && state.authority === authority, 'token mint/authority mismatch');
+  check(!state.frozen && !state.delegate && state.delegatedAmount === 0n && !state.closeAuthority, 'frozen, delegated or alternate close-authority token account');
+  return {amount:state.amount};
 }
 export function mintDecimals(account: ChainAccount | null | undefined) {
-  check(account?.owner !== TOKEN_2022, 'Token-2022 mints are unsupported');
-  check(account && account.owner === TOKEN && !account.executable && account.data.length === 82 && account.data[45] === 1, 'invalid SPL mint');
-  const view = new DataView(account.data.buffer, account.data.byteOffset, account.data.byteLength);
-  check([0,1].includes(view.getUint32(0,true)) && [0,1].includes(view.getUint32(46,true)), 'invalid mint authority options');
-  return account.data[44]!;
+  check(account?.owner === TOKEN, 'ordinary SPL mint required by the capture helper');
+  return decodeTokenMint(ZERO,account).decimals;
 }

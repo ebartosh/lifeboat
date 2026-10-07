@@ -15,7 +15,7 @@ export interface WalletAdapter {
   disconnect(connection: ExternalConnection): Promise<void>;
 }
 
-/** A wallet authorization is separate from the app-owned plaintext key. */
+/** Persists external-wallet authorization; private wallet keys stay in the wallet app. */
 export class ExternalWallet {
   constructor(private readonly files: PrivateFiles, private readonly adapter: WalletAdapter) {}
 
@@ -36,8 +36,6 @@ export class ExternalWallet {
 
   async connect(): Promise<ExternalConnection> {
     const connection = await this.adapter.connect();
-    // The app must not retain its own copy of a key after switching to a wallet app.
-    await this.files.remove('wallet.json');
     await this.files.write('external-wallet.json', JSON.stringify(connection));
     return connection;
   }

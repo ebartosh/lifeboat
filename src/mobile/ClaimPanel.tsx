@@ -46,11 +46,16 @@ export function ClaimPanel({ state, controller, resumeMeteora }: { state: ClaimS
             : review.step.kind === 'reward' ? `Claim reward ${review.step.rewardIndex!+1}` : 'Close empty position'}
             {review.step.kind !== 'close' ? ` · Bins ${review.step.lower} to ${review.step.upper}` : ''}</Body>
           {review.remainingReceipts.map(token => <Body key={token.mint} selectable>
-            Remaining receipts (estimate): ≈{formatUnits(token.amount,token.decimals)} {token.symbol}
+            Remaining receipts after transfer fees (estimate): ≈{formatUnits(token.amount,token.decimals)} {token.symbol}
           </Body>)}
           {review.receipts.map(token => <Body key={token.mint} selectable>
-            This step (simulation estimate): ≈{formatUnits(token.amount,token.decimals)} {token.symbol}
+            This step after transfer fees (simulation estimate): ≈{formatUnits(token.amount,token.decimals)} {token.symbol}
           </Body>)}
+          {review.receipts.filter(token => token.transferFee > 0n).map(token => <Body key={token.mint} selectable>
+            Gross transfer: {formatUnits(token.grossAmount,token.decimals)} {token.symbol} · Withheld transfer fee: {formatUnits(token.transferFee,token.decimals)} {token.symbol}
+          </Body>)}
+          {review.remainingReceipts.some(token => token.token.transferFee) &&
+            <Body>Future transfer fees use the simulated epoch and may change before later steps. Withheld fees are unavailable to spend.</Body>}
           {review.remainingReceipts.map(token => <AddressField key={token.mint} label={`${token.symbol} mint`} value={token.mint} />)}
           <Body>Network fee, this step: {review.feeLamports === null ? 'estimate unavailable' : `${formatLamports(review.feeLamports)} SOL`}</Body>
           <Body>Remaining network fees (estimate): {review.feeLamports === null ? 'unavailable' : `≈${formatLamports(review.feeLamports*BigInt(review.remainingSteps))} SOL`}</Body>
@@ -77,8 +82,12 @@ export function ClaimPanel({ state, controller, resumeMeteora }: { state: ClaimS
           : 'The recipient token account is missing. The program will create it using SOL; rent is charged in addition to the network fee.'}</Body>}
         {review.action === 'claim-ore' && <Body>If the token account is missing, its creation will require additional SOL.</Body>}
         </>}
-        <Body>The same message that passed simulation will be signed.</Body>
-        <ActionButton title="Sign and send" variant="primary" onPress={() => controller.answer(true)} />
+        {review.walletChanges ? <>
+          <Notice>The wallet updated the transaction. Its signed version passed validation and simulation.</Notice>
+          <Body>Priority fee included above: {formatLamports(review.walletChanges.priorityFeeLamports)} SOL</Body>
+          <Body>Confirm the updated network fee to send. No additional wallet signature is needed.</Body>
+        </> : <Body>The operation will be signed in your wallet. Any permitted wallet changes require another review before sending.</Body>}
+        <ActionButton title={review.walletChanges ? 'Send transaction' : 'Sign and send'} variant="primary" onPress={() => controller.answer(true)} />
       </> : <>
         <Notice>{titles[state.phase]}</Notice>
         {!!state.message && <Body accessibilityLiveRegion="polite">{state.message}</Body>}

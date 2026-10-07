@@ -1,3 +1,4 @@
+import { testWalletSigning } from './fixtures/signer';
 import { AccountRole, address, blockhash, getAddressEncoder, getProgramDerivedAddress, getSignatureFromTransaction,
   type Address, type Transaction } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
@@ -39,7 +40,7 @@ async function fixture(rewards: bigint | null = 100n, refined = 12n) {
     getBlockHeight: vi.fn(async () => 1n),
   };
 
-  return { wallet, accounts, rpc, options: { adapter: ore, wallet: wallet.address, rpc, getSigner: async () => wallet } };
+  return { wallet, accounts, rpc, options: { adapter: ore, wallet: wallet.address, rpc, signWithWallet: testWalletSigning(wallet) } };
 }
 
 describe("ClaimORE interface", () => {

@@ -6,6 +6,8 @@ import { MAINNET_GENESIS } from '../../src/protocols/meteora/adapter';
 import { ATA, CLOCK, PROGRAM, SYSVAR, TOKEN, WSOL, ZERO } from '../../src/protocols/meteora/codec';
 import { ataAddress, binArrayAddress, integerBytes, keyBytes, pda } from '../../src/protocols/meteora/instructions';
 import { createTestSigner } from './signer';
+import { extendedBytes, feeConfigBytes } from './tokens';
+import { TOKEN_2022 } from '../../src/protocols/meteora/codec';
 export const POSITION = address('11111111111111111111111111111112');
 export const USDC = address('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 export const REWARD = address('11111111111111111111111111111114');
@@ -42,6 +44,7 @@ export class MeteoraFixtureRpc {
   sent: Transaction[] = []; simulations: Transaction[] = []; blockhashes = 0;
   status: SignatureStatus | null = {confirmationStatus:'confirmed',error:null,slot:100n};
   simulationError: unknown = null; missingSnapshot = false; staleSnapshot = false;
+  rentSizes: number[] = [];
   mutateSimulation?: (accounts:Map<Address,ChainAccount|null>) => void;
   sendError = false; fee:bigint|null = 5000n;
   async getGenesisHash() { return this.genesis; }
@@ -53,7 +56,7 @@ export class MeteoraFixtureRpc {
     return {slot:this.slot,accounts:this.discoveries.filter(item => filters.every(f => f.offset===0
       ? Buffer.from(item.account.data.subarray(0,8)).equals(Buffer.from((awaitDisc(f.bytes)))) : true))};
   }
-  async getMinimumBalanceForRentExemption() { return 2_039_280n; }
+  async getMinimumBalanceForRentExemption(size=165) { this.rentSizes.push(size); return 2_039_280n+BigInt(size-165)*6960n; }
   async getLatestBlockhash() {
     this.blockhashes++; return {blockhash:blockhash(address('11111111111111111111111111111111')),lastValidBlockHeight:100n};
   }
@@ -66,7 +69,16 @@ export class MeteoraFixtureRpc {
     if(message.version !== 'legacy') throw new Error('Fixture only accepts legacy messages');
     for(const ix of message.instructions ?? []) {
       const program=message.staticAccounts[ix.programAddressIndex]!, keys=(ix.accountIndices ?? []).map(i=>message.staticAccounts[i]!);
-      if(program===ATA) { if(!accounts.get(keys[1]!)) accounts.set(keys[1]!,{owner:TOKEN,executable:false,data:tokenBytes(keys[3]!,keys[2]!,0n)}); continue; }
+      if(program===ATA) {
+        if(!accounts.get(keys[1]!)) {
+          const base=tokenBytes(keys[3]!,keys[2]!,0n), tokenProgram=keys[5]!;
+          const mint=accounts.get(keys[3]!)!.data;
+          const hasFee=mint.length>166 && new DataView(mint.buffer,mint.byteOffset,mint.byteLength).getUint16(166,true)===1;
+          const exts:[number,Uint8Array][]=[[7,new Uint8Array()]];
+          if(hasFee) exts.push([2,new Uint8Array(8)]);
+          accounts.set(keys[1]!,{owner:tokenProgram,executable:false,data:tokenProgram===TOKEN_2022?extendedBytes(base,2,exts):base});
+        } continue;
+      }
       if(program!==PROGRAM) continue;
       const d=ix.data!,v=new DataView(d.buffer,d.byteOffset,d.byteLength);
       const kind = d[0]===204 ? 'remove' : d[0]===112 ? 'fees' : d[0]===190 ? 'reward' : 'close';
@@ -99,7 +111,18 @@ export class MeteoraFixtureRpc {
       }
       const transfer=(ata:Address,vault:Address,amount:bigint) => {
         const user=accounts.get(ata)!.data,source=accounts.get(vault)!.data;
-        u64(user,64,new DataView(user.buffer).getBigUint64(64,true)+amount);
+        const mintKey=getAddressDecoder().decode(source.subarray(0,32)), mint=accounts.get(mintKey)!.data;
+        let fee=0n;
+        if(mint.length>166 && new DataView(mint.buffer).getUint16(166,true)===1) {
+          const mv=new DataView(mint.buffer),epoch=new DataView(accounts.get(CLOCK)!.data.buffer).getBigUint64(16,true);
+          const o=epoch>=mv.getBigUint64(260,true)?260:242;
+          const bps=BigInt(mv.getUint16(o+16,true)), cap=mv.getBigUint64(o+8,true);
+          fee=(amount*bps+9999n)/10000n;if(fee>cap)fee=cap;
+          for(let i=166;i<user.length;i+=4+new DataView(user.buffer).getUint16(i+2,true)) {
+            if(new DataView(user.buffer).getUint16(i,true)===2) {u64(user,i+4,new DataView(user.buffer).getBigUint64(i+4,true)+fee);break;}
+          }
+        }
+        u64(user,64,new DataView(user.buffer).getBigUint64(64,true)+amount-fee);
         u64(source,64,new DataView(source.buffer).getBigUint64(64,true)-amount);
       };
       if(kind==='remove') {transfer(keys[3]!,keys[5]!,x);transfer(keys[4]!,keys[6]!,y);}
@@ -114,9 +137,10 @@ export class MeteoraFixtureRpc {
   }
   async sendTransaction(tx:Transaction) { this.sent.push(tx);if(this.sendError) throw new Error('RPC disconnected');this.accounts=this.apply(tx);return getSignatureFromTransaction(tx); }
 }
-import { getBase58Encoder } from '@solana/kit';
+import { getAddressDecoder, getBase58Encoder } from '@solana/kit';
 const awaitDisc = (text:string) => getBase58Encoder().encode(text);
-export async function meteoraFixture(options:{lower?:number;width?:number;shares?:boolean;reward?:boolean;oneSided?:boolean;missingAta?:boolean;wallet?:Address}={}) {
+export async function meteoraFixture(options:{lower?:number;width?:number;shares?:boolean;reward?:boolean;oneSided?:boolean;missingAta?:boolean;wallet?:Address;
+  token2022?:boolean; reward2022?:boolean; transferFee?:boolean; epoch?:bigint}={}) {
   const signer=await createTestSigner(),rpc=new MeteoraFixtureRpc();
   const wallet=options.wallet ?? signer.address;
   const lower=options.lower ?? -35,width=options.width ?? 70;
@@ -138,6 +162,22 @@ export async function meteoraFixture(options:{lower?:number;width?:number;shares
   const clock=new Uint8Array(40);u64(clock,0,100n);u64(clock,32,100n);set(CLOCK,clock,SYSVAR);
   rpc.accounts.set(PROGRAM,{owner:address('BPFLoaderUpgradeab1e11111111111111111111111'),executable:true,data:new Uint8Array()});
   rpc.accounts.set(TOKEN,{owner:ZERO,executable:true,data:new Uint8Array()});
+  rpc.accounts.set(TOKEN_2022,{owner:ZERO,executable:true,data:new Uint8Array()});
+  u64(clock,16,options.epoch ?? 0n);
+  for (const mint of [ ...(options.token2022?[USDC]:[]), ...(options.reward2022 && options.reward?[REWARD]:[]) ]) {
+    const mintAccount=rpc.accounts.get(mint)!;
+    mintAccount.owner=TOKEN_2022;
+    if(options.transferFee) mintAccount.data=extendedBytes(mintAccount.data,1,[[1,feeConfigBytes()]]);
+    const vault=mint===USDC?reserveX:rewardVault, vaultAccount=rpc.accounts.get(vault)!;
+    vaultAccount.owner=TOKEN_2022;
+    if(options.transferFee) vaultAccount.data=extendedBytes(vaultAccount.data,2,[[2,new Uint8Array(8)]]);
+    const oldAta=await ataAddress(wallet,mint);rpc.accounts.delete(oldAta);
+    if(!options.missingAta) {
+      const exts:[number,Uint8Array][]=[[7,new Uint8Array()]];if(options.transferFee)exts.push([2,new Uint8Array(8)]);
+      set(await ataAddress(wallet,mint,TOKEN_2022),extendedBytes(tokenBytes(mint,wallet,1000n),2,exts),TOKEN_2022);
+    }
+    if(mint===USDC)pool[880]=1;
+  }
   for(let index=Math.floor(lower/70);index<=Math.floor((lower+width-1)/70);index++) {
     const data=bytes('BinArray',10136);new DataView(data.buffer).setBigInt64(8,BigInt(index),true);pubkey(data,24,poolKey);
     for(let i=0;i<70;i++) {const b=56+i*144;u64(data,b,100n);u64(data,b+8,options.oneSided?0n:200n);u128(data,b+32,4n*Q64);u128(data,b+80,2n*Q64);if(options.reward)u128(data,b+48,3n*Q64);}
