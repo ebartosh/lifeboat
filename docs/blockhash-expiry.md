@@ -44,6 +44,12 @@ Known expiry before submission now displays: "Transaction expired. Nothing was s
 
 The executor marks only the three pre-submission height checks with a typed expiry error. The controller also recognizes that error inside the unsent-operation wrapper after saving a pending signature. It clears that unsent record before allowing a new preparation. Meteora uses step-specific wording, keeps confirmed checkpoints and instructs the user to resume the withdrawal. An expired signature with an unknown submission result still blocks resubmission and offers status checking; it never shows the faster-approval advice. The message does not promise a fixed number of seconds or bypass careful review, fresh simulation or signing.
 
+## Lifetime refresh after the first review
+
+The first review uses a provisional blockhash for simulation and display only. After approval, the executor requests a new blockhash and, when its `lastValidBlockHeight` is later, rebuilds the same instructions with it. It then repeats the caller's pre-simulation checks, simulation and postcondition validation before the wallet receives the message. The wallet therefore signs a message that was simulated after approval, and time spent on the first review no longer consumes the signing and landing window. In the observed attempt above, the first review was short, so this change does not address the authorization and second-review durations.
+
+This silent re-check adds no review. If the fresh simulation or validation fails, or the network fee exceeds the approved fee, nothing is signed or sent, and the user prepares the operation again. If an RPC node returns an older blockhash, the reviewed lifetime and simulation are kept. Both the wallet-change review and the exact-signed-message rule are unchanged.
+
 ## Repeat the read-only probes
 
 ```powershell

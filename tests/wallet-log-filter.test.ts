@@ -38,6 +38,9 @@ describe('wallet log capture filtering', () => {
       '[LifeboatTransaction] trace=v1 attempt=1 event=wallet-simulation-start elapsedMs=123',
       '[LifeboatTransaction] trace=v1 attempt=1 event=wallet-review-wait elapsedMs=123',
       '[LifeboatTransaction] trace=v1 attempt=1 event=failure elapsedMs=123 stage=wallet-simulation-start reason=simulation-error',
+      '[LifeboatTransaction] trace=v1 attempt=1 event=lifetime-refresh elapsedMs=123',
+      '[LifeboatTransaction] trace=v1 attempt=1 event=fresh-simulation-validation elapsedMs=123',
+      '[LifeboatTransaction] trace=v1 attempt=1 event=failure elapsedMs=123 stage=fresh-simulation-start reason=simulation-error',
       '[LifeboatTransaction] trace=v1 attempt=1 event=guard-detail elapsedMs=123 index=3 assertion=0 kind=account-info encoding=borsh field=lamports operator=4 value=1000 target=original-0',
       '[LifeboatTransaction] trace=v1 attempt=1 event=instruction-detail elapsedMs=123 side=returned index=3 program=L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95 kind=lighthouse-account-info opcode=6 dataLength=26 accounts=1 originalIndex=none value=2 secondary=none source=original-0 destination=none',
     ]) {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { AppState, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, View,
+  useWindowDimensions } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import type { Address } from '@solana/kit';
@@ -20,8 +21,9 @@ import { executeMeteora, readMeteoraPositions, type MeteoraOperation } from '../
 import { MeteoraAdapter, type MeteoraStatus } from '../protocols/meteora/adapter';
 import { getDefaultRpcUrl } from './rpc-config';
 import { ActionButton } from './ActionButton';
-import { colors, ui } from './theme';
-import { AddressField, Body, Dialog, Heading, Notice, Panel } from './Interface';
+import { colors, medium } from './theme';
+import { AddressField, Body, Dialog, Notice, Panel, Tabs } from './Interface';
+import { pingRpc, type RpcStatus } from './rpc-status';
 import { OrePanel } from './OrePanel';
 import { WalletConnectionError } from './wallet-connection-error';
 import { WalletCheckPanel } from './WalletCheckPanel';
@@ -30,10 +32,13 @@ import { runWalletSignatureCheck, walletCheckFailure } from './wallet-check';
 const rpc = getDefaultRpcUrl();
 type Protocol = 'ore' | 'kamino' | 'meteora';
 const shortAddress = (value: Address) => `${value.slice(0, 4)}…${value.slice(-4)}`;
+const protocols: { id: Protocol; title: string }[] = [{ id: 'ore', title: 'ORE' }, { id: 'kamino', title: 'Kamino' },
+  { id: 'meteora', title: 'Meteora' }];
 
 const bundledFonts = {
   'IBMPlexMono-Regular': require('../../assets/fonts/IBMPlexMono-Regular.ttf'),
   'IBMPlexMono-Medium': require('../../assets/fonts/IBMPlexMono-Medium.ttf'),
+  'IBMPlexMono-SemiBold': require('../../assets/fonts/IBMPlexMono-SemiBold.ttf'),
   'IBMPlexSerif-Regular': require('../../assets/fonts/IBMPlexSerif-Regular.ttf'),
   'IBMPlexSerif-Medium': require('../../assets/fonts/IBMPlexSerif-Medium.ttf'),
 };
@@ -68,14 +73,24 @@ function WalletApp() {
   const [walletCheck, setWalletCheck] = useState(false);
   const [walletCheckMessage, setWalletCheckMessage] = useState('');
   useEffect(() => { setWalletCheck(false); setWalletCheckMessage(''); }, [wallet]);
+  const { width, fontScale } = useWindowDimensions();
+  const [rpcStatus, setRpcStatus] = useState<RpcStatus>('checking');
+  useEffect(() => {
+    // One ping per app start; refresh reloads positions but does not recheck the status.
+    let active = true;
+    void pingRpc(rpc ? new SolanaRpcClient(rpc) : null).then(status => { if (active) setRpcStatus(status); });
+    return () => { active = false; };
+  }, []);
   const stakeRevision = useRef(0);
   const [kaminoPositions, setKaminoPositions] = useState<PositionStatus[] | null>(null);
   const [kaminoLoading, setKaminoLoading] = useState(false);
   const [kaminoMessage, setKaminoMessage] = useState('');
+  const [kaminoReadAt, setKaminoReadAt] = useState<number | null>(null);
   const kaminoRevision = useRef(0);
   const [meteoraPositions,setMeteoraPositions] = useState<MeteoraStatus[] | null>(null);
   const [meteoraLoading,setMeteoraLoading] = useState(false);
   const [meteoraMessage,setMeteoraMessage] = useState('');
+  const [meteoraReadAt,setMeteoraReadAt] = useState<number | null>(null);
   const meteoraRevision = useRef(0);
   const [controller] = useState(() => new ClaimController({ store: pendingStore,
     execute: (url, action, input) => {
@@ -136,7 +151,7 @@ function WalletApp() {
     try {
       const positions = await readKaminoPositions(url, address);
       if (revision !== kaminoRevision.current) return;
-      setKaminoPositions(positions);
+      setKaminoPositions(positions); setKaminoReadAt(Date.now());
     } catch (error) {
       if (revision !== kaminoRevision.current) return;
       setKaminoPositions(null);
@@ -151,7 +166,7 @@ function WalletApp() {
     try {
       const positions = await readMeteoraPositions(url,address);
       if (revision !== meteoraRevision.current) return;
-      setMeteoraPositions(positions);
+      setMeteoraPositions(positions); setMeteoraReadAt(Date.now());
     } catch {
       if (revision !== meteoraRevision.current) return;
       setMeteoraMessage('Could not read Meteora positions. Check the mainnet-beta RPC and refresh.');
@@ -162,8 +177,8 @@ function WalletApp() {
     loader.reset();
     stakeRevision.current += 1; kaminoRevision.current += 1; meteoraRevision.current += 1;
     setStake(null); setStakeStatus('idle'); setStakeMessage(''); setWalletDetails(false);
-    setKaminoPositions(null); setKaminoLoading(false); setKaminoMessage('');
-    setMeteoraPositions(null); setMeteoraLoading(false); setMeteoraMessage('');
+    setKaminoPositions(null); setKaminoLoading(false); setKaminoMessage(''); setKaminoReadAt(null);
+    setMeteoraPositions(null); setMeteoraLoading(false); setMeteoraMessage(''); setMeteoraReadAt(null);
     if (!busy && foreground && wallet && rpc) {
       if (protocol === 'ore') {
         void refreshStake(rpc, wallet);
@@ -268,64 +283,110 @@ function WalletApp() {
   }
   const refreshing = protocol === 'ore' ? stakeStatus === 'loading' || rewards.status === 'loading'
     : protocol === 'kamino' ? kaminoLoading : meteoraLoading;
+  const refreshDisabled = !wallet || !rpc || settingsBusy || refreshing;
+  const walletTitle = wallet ? shortAddress(wallet) : 'Connect wallet';
+  // Monospaced estimate of `[ RPC ● ]`, the wallet command and `[ ↻ ]` with their touch padding.
+  const oneLineHeader = (18 + walletTitle.length) * 8.4 * fontScale + 40 <= width - 24;
+  const walletStyle = oneLineHeader ? styles.walletCommand : styles.walletCommandEnd;
+  const walletCommand = wallet
+    ? <ActionButton title={walletTitle} accessibilityLabel="Wallet details" textStyle={styles.walletAddress}
+      align={oneLineHeader ? 'start' : 'end'} style={walletStyle} onPress={() => setWalletDetails(true)} />
+    : <ActionButton title={walletTitle} align={oneLineHeader ? 'start' : 'end'} style={walletStyle}
+      disabled={settingsBusy} onPress={connectWallet} />;
   return <SafeAreaView style={styles.root}>
     <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
         <View style={styles.masthead}>
-          <Heading>Lifeboat</Heading>
-          <View style={styles.headerCommands}>
-            {wallet ? <ActionButton title="Wallet details" style={styles.walletCommand} onPress={() => setWalletDetails(true)} />
-              : <ActionButton title="Connect wallet" style={styles.walletCommand} disabled={settingsBusy} onPress={connectWallet} />}
-            <ActionButton title={refreshing ? 'Refreshing positions' : 'Refresh'} style={styles.refreshCommand}
-              disabled={!wallet || !rpc || settingsBusy || refreshing} onPress={retrySelected}
-              icon={<Text accessible={false} allowFontScaling={false} style={styles.refreshIcon}>↻</Text>} />
+          <Text accessibilityRole="header" style={styles.hiddenHeading}>Lifeboat</Text>
+          <View style={styles.mastheadLine}>
+            <RpcIndicator status={rpcStatus} />
+            <View style={styles.headerCommands}>
+              {oneLineHeader && walletCommand}
+              <ActionButton title={refreshing ? 'Refreshing positions' : 'Refresh'} align="end"
+                disabled={refreshDisabled} onPress={retrySelected}
+                icon={<Text accessible={false} allowFontScaling={false}
+                  style={[styles.refreshIcon, refreshDisabled && { color: colors.secondary }]}>↻</Text>} />
+            </View>
           </View>
+          {!oneLineHeader && <View style={styles.walletLine}>{walletCommand}</View>}
         </View>
-        <Body>{wallet ? 'Wallet ' + shortAddress(wallet) : 'Wallet not connected'}</Body>
+        {!wallet && <Body>Wallet not connected</Body>}
         {!!notice && <Notice>{notice}</Notice>}
-        <View style={ui.commands}>
-          {(['ore', 'kamino', 'meteora'] as const).map(item => <ActionButton key={item} selected={protocol === item}
-            title={item === 'ore' ? 'ORE' : item === 'kamino' ? 'Kamino' : 'Meteora'} onPress={() => setProtocol(item)} />)}
-        </View>
-        <Body style={styles.path}>Lifeboat / {protocol === 'ore' ? 'ORE' : protocol === 'kamino' ? 'Kamino' : 'Meteora'}</Body>
+        <Tabs items={protocols} selected={protocol} onSelect={setProtocol} />
         {!rpc && <Notice error>RPC is not configured. Operations are unavailable.</Notice>}
+        {!!rpc && rpcStatus === 'unreachable' &&
+          <Notice error>Could not reach the RPC. Check the connection, then refresh positions.</Notice>}
         {!wallet ? <Panel title="Positions"><Body>Connect a wallet to view assets, rewards and available actions.</Body></Panel>
           : protocol === 'kamino' ? <KaminoPanel key={wallet + ':' + rpc} positions={kaminoPositions}
-            loading={kaminoLoading} message={kaminoMessage} disabled={settingsBusy || !rpc} run={startKamino} />
+            loading={kaminoLoading} message={kaminoMessage} readAt={kaminoReadAt} disabled={settingsBusy || !rpc} run={startKamino} />
           : protocol === 'meteora' ? <MeteoraPanel key={wallet + ':' + rpc} positions={meteoraPositions}
-            loading={meteoraLoading} message={meteoraMessage} disabled={settingsBusy || !rpc} run={startMeteora} />
+            loading={meteoraLoading} message={meteoraMessage} readAt={meteoraReadAt} disabled={settingsBusy || !rpc} run={startMeteora} />
           : <OrePanel key={wallet + ':' + rpc} rewards={rewards} stake={stake} stakeStatus={stakeStatus}
             stakeMessage={stakeMessage} disabled={settingsBusy || !rpc} claim={startClaim} unstake={startUnstake} />}
         <ClaimPanel state={claim} controller={controller} resumeMeteora={operation => startMeteora(operation.position,operation)} />
       </ScrollView>
     </KeyboardAvoidingView>
     <Dialog visible={walletDetails && !!wallet} title="Wallet" onClose={() => setWalletDetails(false)}>
-      <Body>External wallet</Body>
-      {wallet && <AddressField label="Wallet" value={wallet} />}
-      <ActionButton title="Switch wallet" disabled={settingsBusy} onPress={() => {
-        setWalletDetails(false);
-        connectWallet();
-      }} />
-      <ActionButton title="Wallet signature check" disabled={settingsBusy || !rpc}
-        onPress={() => { setWalletDetails(false); setWalletCheckMessage(''); setWalletCheck(true); }} />
-      <ActionButton title="Disconnect wallet"
-        disabled={settingsBusy} variant="danger" onPress={() => {
+      {wallet && <AddressField label="Address" value={wallet} />}
+      <View>
+        <ActionButton title="Switch wallet" disabled={settingsBusy} style={styles.menuCommand} onPress={() => {
           setWalletDetails(false);
-          disconnectWallet();
+          connectWallet();
         }} />
+        <ActionButton title="Wallet signature check" disabled={settingsBusy || !rpc} style={styles.menuCommand}
+          onPress={() => { setWalletDetails(false); setWalletCheckMessage(''); setWalletCheck(true); }} />
+        <ActionButton title="Disconnect wallet" style={styles.menuCommand}
+          disabled={settingsBusy} variant="danger" onPress={() => {
+            setWalletDetails(false);
+            disconnectWallet();
+          }} />
+      </View>
     </Dialog>
     {wallet && <WalletCheckPanel visible={walletCheck} wallet={wallet}
       busy={settingsBusy} message={walletCheckMessage} onCheck={checkWallet} onClose={() => setWalletCheck(false)} />}
   </SafeAreaView>;
 }
+const rpcLabels: Record<RpcStatus, string> = {
+  checking: 'RPC: checking', connected: 'RPC: connected', unreachable: 'RPC: unreachable',
+};
+/** Startup ping result. A status, not a command: navy text without a hotkey marker. */
+function RpcIndicator({ status }: { status: RpcStatus }) {
+  // The mark follows the text size, like a glyph would.
+  const size = Math.round(10 * Math.min(useWindowDimensions().fontScale, 2));
+  const dot = { width: size, height: size, borderRadius: size / 2 };
+  const bar = { width: size * 1.2, height: Math.max(2, size / 5) };
+  return <View accessible accessibilityLabel={rpcLabels[status]} accessibilityLiveRegion="polite" style={styles.rpc}>
+    <Text style={styles.rpcText}>[ RPC</Text>
+    {/* Each state has its own shape, so color is not the only signal. */}
+    <View style={[styles.rpcMark, { width: size, height: size }]}>
+      {status === 'unreachable' ? <>
+        <View style={[styles.rpcCross, bar, { transform: [{ rotate: '45deg' }] }]} />
+        <View style={[styles.rpcCross, bar, { transform: [{ rotate: '-45deg' }] }]} />
+      </> : <View style={[dot, status === 'connected' ? styles.rpcConnected : styles.rpcChecking]} />}
+    </View>
+    <Text style={styles.rpcText}>]</Text>
+  </View>;
+}
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.white },
   screen: { flexGrow: 1, padding: 12, gap: 12, backgroundColor: colors.white },
-  masthead: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  headerCommands: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 'auto', maxWidth: '100%' },
+  masthead: { minWidth: 0 },
+  hiddenHeading: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 },
+  mastheadLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 },
+  // Fills the rest of the line rather than shrink-wrapping, so refresh can hang its touch padding past the edge.
+  headerCommands: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexGrow: 1, flexShrink: 1,
+    minWidth: 0 },
+  walletLine: { alignItems: 'flex-end' },
   walletCommand: { flexShrink: 1 },
-  refreshCommand: { width: 48, paddingHorizontal: 0, alignItems: 'center' },
-  refreshIcon: { color: colors.blue, fontSize: 28, lineHeight: 28 },
-  path: { color: colors.blue, paddingVertical: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.blue },
+  walletCommandEnd: { flexShrink: 1, alignSelf: 'flex-end' },
+  refreshIcon: { color: colors.blue, fontSize: 18, lineHeight: 20 },
+  walletAddress: { color: colors.address },
+  menuCommand: { alignSelf: 'stretch' },
+  rpc: { flexDirection: 'row', alignItems: 'center', minHeight: 48 },
+  rpcText: { fontFamily: medium, fontSize: 14, lineHeight: 20, color: colors.navy },
+  rpcMark: { marginHorizontal: 8, alignItems: 'center', justifyContent: 'center' },
+  rpcConnected: { backgroundColor: colors.ok },
+  rpcChecking: { borderWidth: 1.5, borderColor: colors.navy },
+  rpcCross: { position: 'absolute', borderRadius: 1, backgroundColor: colors.danger },
 });

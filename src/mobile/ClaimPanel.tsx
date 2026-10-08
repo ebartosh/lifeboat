@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { formatLamports, formatOre, formatUnits } from '../core/format';
+import { formatLamports, formatOre, formatUnits, groupDigits } from '../core/format';
 import type { ClaimController, ClaimState } from './claim-controller';
 import { ActionButton } from './ActionButton';
-import { AddressField, Body, Dialog, Notice, Panel } from './Interface';
+import { AddressField, Body, Dialog, Field, Note, Notice, Panel, Section } from './Interface';
 import type { MeteoraOperation } from '../operations/meteora';
 
 const titles: Record<ClaimState['phase'], string> = {
@@ -18,6 +18,8 @@ function actionName(action: string) {
     : action === 'claim-ore' ? 'Claim ORE' : action === 'repay' || action === 'kamino-repay'
       ? 'Kamino repayment' : 'Kamino withdrawal';
 }
+const sol = (lamports: bigint) => `${formatLamports(lamports)} SOL`;
+const units = (amount: bigint, decimals: number) => groupDigits(formatUnits(amount, decimals));
 export function ClaimPanel({ state, controller, resumeMeteora }: { state: ClaimState; controller: ClaimController;
   resumeMeteora?: (operation:MeteoraOperation) => void }) {
   const [dismissed, setDismissed] = useState(false);
@@ -28,79 +30,98 @@ export function ClaimPanel({ state, controller, resumeMeteora }: { state: ClaimS
     : state.phase === 'preparing' ? () => controller.invalidate()
       : running ? undefined : () => setDismissed(true);
   const signature = state.pending?.signature ?? state.signature;
+  const meteora = review?.action === 'meteora-withdraw-all' ? review : null;
+  const subtitle = state.phase === 'review' && review ? (meteora
+    ? `${actionName(meteora.action)} · step ${meteora.completedSteps + 1} of ≈${meteora.completedSteps + meteora.remainingSteps}`
+    : actionName(review.action)) : undefined;
+  const resumable = !!state.operation && ['partial','cancelled','error','failed'].includes(state.phase);
+  const actions = state.phase === 'review' && review
+    ? <ActionButton title={review.walletChanges ? 'Send transaction' : 'Sign and send'} variant="primary" onPress={() => controller.answer(true)} />
+    : state.phase === 'unknown' ? <ActionButton title="Check status" onPress={() => void controller.check()} variant="primary" />
+      : resumable && resumeMeteora ? <ActionButton title="Resume withdrawal" variant="primary" onPress={() => resumeMeteora(state.operation!)} />
+        : undefined;
   return <>
-    {state.phase !== 'idle' && <Panel title="Operation / Status">
+    {state.phase !== 'idle' && <Panel title="Operation · Status">
       <Notice>{titles[state.phase]}</Notice>
       {dismissed && <ActionButton title="Operation details" onPress={() => setDismissed(false)} />}
     </Panel>}
-    <Dialog visible={state.phase !== 'idle' && !dismissed} title={titles[state.phase]} onClose={close}
-      closeLabel={state.phase === 'review' ? 'Cancel' : state.phase === 'preparing' ? 'Cancel preparation' : 'Close'}>
+    <Dialog visible={state.phase !== 'idle' && !dismissed} title={titles[state.phase]} subtitle={subtitle} onClose={close}
+      closeLabel={state.phase === 'review' ? 'Cancel' : state.phase === 'preparing' ? 'Cancel preparation' : 'Close'} actions={actions}>
       {state.phase === 'review' && review ? <>
-        <Body>{actionName(review.action)}</Body>
+        <Notice success>Simulation succeeded</Notice>
         {review.action === 'meteora-withdraw-all' ? <>
-          <Body>Operation: {review.operationId}</Body>
-          <AddressField label="Position" value={review.position} />
-          <AddressField label="Recipient" value={review.recipient} />
-          <Body>Confirmed steps: {review.completedSteps} · Remaining steps (estimate): {review.remainingSteps}</Body>
-          <Body>Next step: {review.step.kind === 'remove' ? 'Remove 100% liquidity' : review.step.kind === 'fees' ? 'Claim fees'
-            : review.step.kind === 'reward' ? `Claim reward ${review.step.rewardIndex!+1}` : 'Close empty position'}
-            {review.step.kind !== 'close' ? ` · Bins ${review.step.lower} to ${review.step.upper}` : ''}</Body>
-          {review.remainingReceipts.map(token => <Body key={token.mint} selectable>
-            Remaining receipts after transfer fees (estimate): ≈{formatUnits(token.amount,token.decimals)} {token.symbol}
-          </Body>)}
-          {review.receipts.map(token => <Body key={token.mint} selectable>
-            This step after transfer fees (simulation estimate): ≈{formatUnits(token.amount,token.decimals)} {token.symbol}
-          </Body>)}
-          {review.receipts.filter(token => token.transferFee > 0n).map(token => <Body key={token.mint} selectable>
-            Gross transfer: {formatUnits(token.grossAmount,token.decimals)} {token.symbol} · Withheld transfer fee: {formatUnits(token.transferFee,token.decimals)} {token.symbol}
-          </Body>)}
-          {review.remainingReceipts.some(token => token.token.transferFee) &&
-            <Body>Future transfer fees use the simulated epoch and may change before later steps. Withheld fees are unavailable to spend.</Body>}
-          {review.remainingReceipts.map(token => <AddressField key={token.mint} label={`${token.symbol} mint`} value={token.mint} />)}
-          <Body>Network fee, this step: {review.feeLamports === null ? 'estimate unavailable' : `${formatLamports(review.feeLamports)} SOL`}</Body>
-          <Body>Remaining network fees (estimate): {review.feeLamports === null ? 'unavailable' : `≈${formatLamports(review.feeLamports*BigInt(review.remainingSteps))} SOL`}</Body>
-          <Body>ATA rent, this step: {formatLamports(review.ataRent)} SOL</Body>
-          <Body>Remaining ATA rent (estimate): ≈{formatLamports(review.remainingAtaRent)} SOL</Body>
-          <Body>Position rent refund on close (estimate): ≈{formatLamports(review.rentRefund)} SOL</Body>
+          <Section title={`This step · ${review.step.kind === 'remove' ? 'Remove 100% liquidity' : review.step.kind === 'fees' ? 'Claim fees'
+            : review.step.kind === 'reward' ? `Claim reward ${review.step.rewardIndex!+1}` : 'Close empty position'}`} divider={false}>
+            {!!review.receipts.length && <Field label="You receive" values={review.receipts.map(token =>
+              `≈${formatUnits(token.amount,token.decimals)} ${token.symbol}`)} />}
+            <Field label="Network fee" values={[review.feeLamports === null ? 'estimate unavailable' : sol(review.feeLamports)]} />
+            <Field label="ATA rent" values={[sol(review.ataRent)]} />
+            {review.step.kind !== 'close' && <Field label="Bins" values={[`${review.step.lower} to ${review.step.upper}`]} />}
+            {!!review.receipts.length && <Note>Receipts after transfer fees · simulation estimate</Note>}
+            {review.receipts.filter(token => token.transferFee > 0n).map(token => <Note key={token.mint} selectable>
+              Gross transfer: {units(token.grossAmount,token.decimals)} {token.symbol} · Withheld transfer fee: {units(token.transferFee,token.decimals)} {token.symbol}
+            </Note>)}
+          </Section>
+          <Section title={`Remaining, including this step · ${review.completedSteps} confirmed`}>
+            <Field label="Receipts" values={review.remainingReceipts.map(token => `≈${formatUnits(token.amount,token.decimals)} ${token.symbol}`)} />
+            <Field label="Network fees" values={[review.feeLamports === null ? 'unavailable'
+              : `≈${formatLamports(review.feeLamports*BigInt(review.remainingSteps))} SOL`]} />
+            <Field label="ATA rent" values={[`≈${sol(review.remainingAtaRent)}`]} />
+            <Field label="Rent refund" values={[`≈${sol(review.rentRefund)}`]} />
+            <Note>Receipts after transfer fees. The rent refund is paid when the empty position closes.</Note>
+            {review.remainingReceipts.some(token => token.token.transferFee) &&
+              <Note>Future transfer fees use the simulated epoch and may change before later steps. Withheld fees are unavailable to spend.</Note>}
+          </Section>
           <Notice>Pool tokens are received unchanged. WSOL stays wrapped.</Notice>
-          <Body>Each step requires a separate signature after a fresh state read and simulation. Cancelling keeps confirmed steps.</Body>
-          <Notice>Simulation succeeded</Notice>
+          <Section title="Accounts">
+            <Field label="Operation" values={[review.operationId]} />
+            <AddressField label="Position" value={review.position} />
+            <AddressField label="Recipient" value={review.recipient} />
+            {review.remainingReceipts.map(token => <AddressField key={token.mint} label={`${token.symbol} mint`} value={token.mint} />)}
+          </Section>
+          <Note>Each step requires a separate signature after a fresh state read and simulation. Cancelling keeps confirmed steps.</Note>
         </> : <>
-        <Body selectable>Amount (estimate): ≈{formatUnits(review.amount, 'decimals' in review ? review.decimals : 11)} {'token' in review ? review.token : review.action === 'claim-sol' ? 'SOL' : 'ORE'}</Body>
-        <AddressField label="Wallet" value={review.wallet} />
-        <AddressField label={review.action === 'repay' ? 'Source' : 'Recipient'} value={review.recipient} />
-        {'position' in review && <><AddressField label="Position" value={review.position} /><AddressField label="Reserve" value={review.reserve} /></>}
-        {review.action === 'claim-ore' && review.ore && <Body>Protocol fee: {formatOre(review.ore.fee)} ORE (already deducted)</Body>}
-        <Body>Network fee: {review.feeLamports === null ? 'estimate unavailable' : `${formatLamports(review.feeLamports)} SOL`}</Body>
-        <Notice>Simulation succeeded</Notice>
-        {'nativeSol' in review && review.nativeSol && <><Body>SOL to wrap: {formatLamports(review.nativeSol.wrap)} SOL</Body>
-          <Body>Temporary account rent: {formatLamports(review.nativeSol.rent)} SOL</Body>
-          <Body>Simulated refund: {review.nativeSol.refund == null ? 'estimate unavailable' : `${formatLamports(review.nativeSol.refund)} SOL`}</Body></>}
-        {'createsAta' in review && review.createsAta && <Body>The recipient token account will be created with additional rent in SOL.</Body>}
-        {review.action === 'unstake' && <Body>{review.recipientExists
-          ? 'No additional token account creation costs are expected.'
-          : 'The recipient token account is missing. The program will create it using SOL; rent is charged in addition to the network fee.'}</Body>}
-        {review.action === 'claim-ore' && <Body>If the token account is missing, its creation will require additional SOL.</Body>}
+          <Section title="Amount" divider={false}>
+            <Field label="Estimate" values={[`≈${formatUnits(review.amount, 'decimals' in review ? review.decimals : 11)} ${'token' in review ? review.token : review.action === 'claim-sol' ? 'SOL' : 'ORE'}`]} />
+          </Section>
+          <Section title="Costs">
+            <Field label="Network fee" values={[review.feeLamports === null ? 'estimate unavailable' : sol(review.feeLamports)]} />
+            {review.action === 'claim-ore' && review.ore && <Field label="Protocol fee" values={[`${formatOre(review.ore.fee)} ORE`]} />}
+            {'nativeSol' in review && review.nativeSol && <>
+              <Field label="SOL to wrap" values={[sol(review.nativeSol.wrap)]} />
+              <Field label="Temporary account rent" values={[sol(review.nativeSol.rent)]} />
+              <Field label="Simulated refund" values={[review.nativeSol.refund == null ? 'estimate unavailable' : sol(review.nativeSol.refund)]} />
+            </>}
+            {review.action === 'claim-ore' && review.ore && <Note>The protocol fee is already deducted.</Note>}
+            {'createsAta' in review && review.createsAta && <Note>The recipient token account will be created with additional rent in SOL.</Note>}
+            {review.action === 'unstake' && <Note>{review.recipientExists
+              ? 'No additional token account creation costs are expected.'
+              : 'The recipient token account is missing. The program will create it using SOL; rent is charged in addition to the network fee.'}</Note>}
+            {review.action === 'claim-ore' && <Note>If the token account is missing, its creation will require additional SOL.</Note>}
+          </Section>
+          <Section title="Accounts">
+            <AddressField label="Wallet" value={review.wallet} />
+            <AddressField label={review.action === 'repay' ? 'Source' : 'Recipient'} value={review.recipient} />
+            {'position' in review && <><AddressField label="Position" value={review.position} /><AddressField label="Reserve" value={review.reserve} /></>}
+          </Section>
         </>}
         {review.walletChanges ? <>
           <Notice>The wallet updated the transaction. Its signed version passed validation and simulation.</Notice>
           <Body>Priority fee included above: {formatLamports(review.walletChanges.priorityFeeLamports)} SOL</Body>
-          <Body>Confirm the updated network fee to send. No additional wallet signature is needed.</Body>
-        </> : <Body>The operation will be signed in your wallet. Any permitted wallet changes require another review before sending.</Body>}
-        <ActionButton title={review.walletChanges ? 'Send transaction' : 'Sign and send'} variant="primary" onPress={() => controller.answer(true)} />
+          <Note>Confirm the updated network fee to send. No additional wallet signature is needed.</Note>
+        </> : <Note>The operation will be signed in your wallet. Any permitted wallet changes require another review before sending.</Note>}
       </> : <>
         <Notice>{titles[state.phase]}</Notice>
         {!!state.message && <Body accessibilityLiveRegion="polite">{state.message}</Body>}
         {state.operation && <>
-          <Body>Operation: {state.operation.id}</Body>
+          <Field label="Operation" values={[state.operation.id]} />
           <Body accessibilityLiveRegion="polite">Confirmed steps: {state.operation.completed.length}</Body>
+          {state.operation.currentStep && <Field label="Current step" values={[state.operation.currentStep.kind]} />}
           <AddressField label="Position" value={state.operation.position} />
           <AddressField label="Recipient" value={state.operation.wallet} />
-          {state.operation.currentStep && <Body>Current step: {state.operation.currentStep.kind}</Body>}
-          {['partial','cancelled','error','failed'].includes(state.phase) && <>
-            {resumeMeteora && <ActionButton title="Resume withdrawal" variant="primary" onPress={() => resumeMeteora(state.operation!)} />}
+          {resumable && <>
             <ActionButton title="End withdrawal" onPress={() => void controller.endMeteora()} />
-            <Body>Ending stops future steps. Tokens already withdrawn remain in the wallet; remaining assets stay in the position.</Body>
+            <Note>Ending stops future steps. Tokens already withdrawn remain in the wallet; remaining assets stay in the position.</Note>
           </>}
         </>}
         {running && <Body>Wait for the result. Resubmission is blocked.</Body>}
@@ -110,9 +131,8 @@ export function ClaimPanel({ state, controller, resumeMeteora }: { state: ClaimS
           <AddressField label="Wallet" value={state.pending.wallet} />
           {state.pending.position && <AddressField label="Position" value={state.pending.position} />}
           {state.pending.reserve && <AddressField label="Reserve" value={state.pending.reserve} />}
-          <Body>Status is checked through the saved RPC. Closing this dialog does not cancel the transaction.</Body>
+          <Note>Status is checked through the saved RPC. Closing this dialog does not cancel the transaction.</Note>
         </>}
-        {state.phase === 'unknown' && <ActionButton title="Check status" onPress={() => void controller.check()} variant="primary" />}
         {state.phase === 'blocked' && <ActionButton title="Reload operation record" onPress={() => void controller.restore()} />}
       </>}
     </Dialog>

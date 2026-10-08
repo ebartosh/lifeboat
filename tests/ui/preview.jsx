@@ -58,7 +58,6 @@ function Preview() {
         busy={scenario === 'wallet-check-busy'} message={checkMessage || (scenario === 'wallet-check-busy' ? 'Opening wallet. Approve the memo signature, then return to Lifeboat. Nothing will be sent.' : '')}
         onCheck={() => { window.calls.push('memo-check'); setCheckMessage('Memo signature verified. Nothing was sent, and no network fee was paid.'); }}
         onClose={() => window.calls.push('close-check')} />
-      <Body>Lifeboat / {meteora?'Meteora':scenario === 'kamino' ? 'Kamino' : 'ORE'}</Body>
       {meteora?<MeteoraPanel positions={scenario==='meteora-empty'?[]:reverse?[...meteoraPositions].reverse():meteoraPositions}
         loading={scenario==='meteora-loading'} message={scenario==='meteora-error'?'Could not read Meteora positions. Check the RPC and refresh.':''}
         disabled={phase!=='idle'} run={run}/>:scenario === 'kamino' ? <KaminoPanel positions={reverse ? [...positions].reverse() : positions}

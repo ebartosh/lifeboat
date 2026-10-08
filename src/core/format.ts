@@ -17,6 +17,13 @@ export function formatUnits(lamports: bigint, decimals: number): string {
   return fractional.length === 0 ? `${sign}${whole}` : `${sign}${whole}.${fractional}`;
 }
 
+/** Display only: groups the whole part of a decimal string, e.g. 1284.5 -> 1,284.5. */
+export function groupDigits(value: string): string {
+  const [whole, fraction] = value.split(".");
+  const grouped = whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return fraction === undefined ? grouped : `${grouped}.${fraction}`;
+}
+
 export function abbreviateAddress(value: Address): string {
   return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }

@@ -88,7 +88,7 @@ describe('Meteora pinned protocol',()=>{
     const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async review=>{expect(review.receipts.every(t=>t.amount>=0n)).toBe(true);return true;},beforeSend:async()=>{},confirmed:async()=>{}});
     expect(result.status).toBe('confirmed');expect(result.operation.completed.map(c=>c.step.kind)).toEqual(['remove','fees','close']);
-    expect(f.rpc.blockhashes).toBe(3);expect(f.rpc.simulations).toHaveLength(3);
+    expect(f.rpc.blockhashes).toBe(6);expect(f.rpc.simulations).toHaveLength(3);
     expect(f.rpc.sent.every(tx=>getTransactionEncoder().encode(tx).length<=1232)).toBe(true);
     expect(f.rpc.accounts.get(POSITION)).toBeNull();
   });
@@ -135,7 +135,7 @@ describe('Meteora pinned protocol',()=>{
     const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async()=>true,beforeSend:async()=>{},confirmed:async op=>{completed.push(op);}});
     expect(result.status).toBe('confirmed');expect(result.operation.completed.map(c=>c.step.kind)).toEqual(['remove','remove','remove','fees','fees','fees','reward','reward','reward','close']);
-    expect(completed).toHaveLength(10);expect(f.rpc.blockhashes).toBe(10);
+    expect(completed).toHaveLength(10);expect(f.rpc.blockhashes).toBe(20);
   });
   it('stops on cancellation and resumes from confirmed state without repeating a step',async()=>{
     const f=await meteoraFixture({width:1});let saved=operation(f.signer.address),reviews=0;

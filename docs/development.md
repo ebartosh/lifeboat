@@ -56,6 +56,14 @@ Alternative tool locations can be passed through `-JavaPath` and `-SdkPath`. The
 
 The script limits Gradle to two workers, disables parallel tasks, runs the Kotlin compiler in-process, and limits CMake to two threads. JVM memory: 2048 MiB heap, 1024 MiB metaspace. These settings survive prebuild. A previous build with a 512 MiB metaspace limit produced a memory warning; the successful build used 1024 MiB.
 
+### Second machine (user `Bartosh-en`)
+
+On October 8, 2026, debug arm64-v8a was built here and installed on a Samsung Galaxy A54 (SM-A546B, serial `RZCW4097DLF`) over USB. The first native build took 21 minutes. Verified tools: Node.js 22.19.0; JDK 17.0.12 at the script's default `C:\Program Files\Java\jdk-17` (Android Studio's bundled JBR is Java 25 and was not used); SDK at the default `%LOCALAPPDATA%\Android\Sdk` with Platforms 36 and 37, Build-Tools 36.0.0, NDK 27.1.12297006, CMake 4.1.2, command-line tools and platform-tools. An x86_64 API 37 AVD exists but testing uses the phone.
+
+Corepack's cached pnpm 12.6.0 is incomplete on this machine (`pnpm.cjs` missing), so `corepack pnpm …` fails. Run installed entry points with Node instead, for example `node node_modules/expo/bin/cli prebuild --platform android --no-clean`.
+
+Both machines sign with the Expo template's `android/app/debug.keystore` (SHA-256 `FA:C6:17:45:…:91:03:3B:9C`) for debug and release, so `adb install -r` updates an app installed from the other machine and keeps its data. The phone does not need USB file-transfer mode; USB debugging works in any USB mode once the computer is authorized.
+
 ## Running on the emulator
 
 Start the Android AVD through Android Studio. Start Metro in a separate terminal:

@@ -22,7 +22,7 @@ await build({ entryPoints: ['tests/ui/preview.jsx'], outfile: path.join(output, 
       : 'export const setStringAsync = async value => { window.copied = value; };' }));
   } }],
 });
-const faces = ['Mono-Regular','Mono-Medium','Serif-Regular','Serif-Medium'].map(name =>
+const faces = ['Mono-Regular','Mono-Medium','Mono-SemiBold','Serif-Regular','Serif-Medium'].map(name =>
   `@font-face{font-family:IBMPlex${name};src:url(/fonts/IBMPlex${name}.ttf)}`).join('');
 const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${faces}html,body,#root{height:100%;margin:0}#root{display:flex;flex-direction:column}*{box-sizing:border-box}</style><div id="root"></div><script src="/preview.js"></script></html>`;
 const server = createServer(async (req, res) => {
@@ -73,6 +73,9 @@ try {
       const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && (b.width < 48 || b.height < 48);
     }).map(el => el.textContent));
     assert.deepEqual(small, [], `${name}: targets under 48px`);
+    const clipped = await page.locator('[role="tab"]').evaluateAll(els =>
+      els.filter(el => el.scrollWidth > el.clientWidth + 1).map(el => el.textContent));
+    assert.deepEqual(clipped, [], `${name}: tab labels wider than their tabs`);
     await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
     results.push(name);
   }
@@ -154,11 +157,16 @@ try {
   assert.equal(await page.getByRole('button', { name: 'Switch wallet', exact: true }).count(), 0);
   const walletButton = await page.getByRole('button', { name: 'Wallet details', exact: true }).boundingBox();
   const refreshButton = await page.getByRole('button', { name: 'Refresh', exact: true }).boundingBox();
-  const title = await page.getByText('Lifeboat', { exact: true }).first().boundingBox();
-  assert.ok(walletButton.x > title.x && refreshButton.x > walletButton.x, 'Wallet and refresh commands belong at the upper right');
+  // The offline fixture rejects every RPC request, so the startup ping reports an unreachable RPC.
+  const rpcStatus = await page.getByLabel('RPC: unreachable', { exact: true }).boundingBox();
+  await page.getByText(/^Error: Could not reach the RPC/).waitFor();
+  assert.equal(await page.getByRole('heading', { name: 'Lifeboat', exact: true }).count(), 1);
+  assert.ok(walletButton.x > rpcStatus.x && refreshButton.x > walletButton.x, 'Wallet and refresh commands belong at the upper right');
   assert.equal(walletButton.y, refreshButton.y, 'Refresh must be next to the wallet command');
-  assert.ok(walletButton.y < title.y + title.height, 'Commands must share the masthead at normal text size');
-  assert.equal((await page.getByRole('button', { name: 'Refresh', exact: true }).textContent()).trim(), '↻');
+  assert.ok(Math.abs(walletButton.y + walletButton.height / 2 - (rpcStatus.y + rpcStatus.height / 2)) < 2,
+    'Commands must share the RPC status line at normal text size');
+  assert.match((await page.getByRole('button', { name: 'Refresh', exact: true }).textContent()).replace(/\s/g, ''), /^\[↻\]$/);
+  assert.equal((await page.getByRole('button', { name: 'Wallet details', exact: true }).textContent()).trim(), '[ 7Ytt…JKXS ]');
   let rpcRequests = 0;
   const countRpc = request => { if (request.url().startsWith('https://api.mainnet.solana.com')) rpcRequests++; };
   page.on('request', countRpc);
@@ -172,7 +180,8 @@ try {
   await page.getByRole('button', { name: 'Switch wallet', exact: true }).click();
   await page.getByText(/Could not connect the wallet/).waitFor();
   await page.getByRole('button', { name: 'Wallet details', exact: true }).click();
-  await page.getByText('External wallet', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Copy: Address', exact: true }).waitFor();
+  assert.equal(await page.getByText('External wallet', { exact: true }).count(), 0);
   assert.equal(await page.getByText(/Import JSON|Local key|Delete local key|Key saved on device/).count(), 0);
   assert.deepEqual(await page.evaluate(() => window.walletCalls), ['connect','disconnect','connect','disconnect','connect','connect']);
   await check('external-wallet-details');
@@ -181,6 +190,16 @@ try {
     await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
     await page.getByText('External wallet connected.', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
+    if (scale === 2) {
+      // Enlarged text: RPC and refresh share the first line, the wallet moves below; tabs stack.
+      const refresh = await page.getByRole('button', { name: 'Refresh', exact: true }).boundingBox();
+      const walletLine = await page.getByRole('button', { name: 'Wallet details', exact: true }).boundingBox();
+      assert.ok(walletLine.y >= refresh.y + refresh.height - 1, 'At 2× the wallet command moves below refresh');
+      assert.ok(Math.abs(walletLine.x + walletLine.width - refresh.x - refresh.width) < 2,
+        `At 2× the wallet line stays right-aligned: wallet ${JSON.stringify(walletLine)}, refresh ${JSON.stringify(refresh)}`);
+      const [first, second] = await page.getByRole('tab').evaluateAll(els => els.map(el => el.getBoundingClientRect().y));
+      assert.ok(second > first, 'At 2× the protocol tabs stack');
+    }
     await check(`app-connected-header-360-${scale}`);
   }
   await open('ore');
