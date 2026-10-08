@@ -4,8 +4,8 @@ import { MeteoraAdapter, type MeteoraPosition, type MeteoraReader, type Token } 
 import { check, decodeAccount, decodePosition, isClosedAccount, TOKEN, type PoolState } from './codec';
 import { binArrayIndex } from './math';
 import { computeBudget, createAta, dlmmInstruction, type StepKind } from './instructions';
-import { tokenAccountRent, tokenAccountSize, transferAmounts } from '../../core/tokens';
-import { withdrawalTokenState } from './token-policy';
+import { decodeTokenMint, tokenAccountRent, tokenAccountSize, transferAmounts } from '../../core/tokens';
+import { sameWithdrawalMint, withdrawalTokenState } from './token-policy';
 import { CLOCK, SYSVAR } from './codec';
 export type MeteoraRpc = MeteoraReader & TransactionRpc & { getMinimumBalanceForRentExemption(size: number): Promise<bigint> };
 export type WithdrawalStep = { id: string; kind: StepKind; lower: number; upper: number; rewardIndex?: number };
@@ -128,23 +128,21 @@ export async function prepareWithdrawAll(input: { rpc: MeteoraRpc; wallet: Addre
         epoch = new DataView(clock.data.buffer,clock.data.byteOffset,40).getBigUint64(16,true);
         check(epoch >= position.epoch, 'simulated epoch moved backwards');
       }
+      // Pool vaults and mint supply move with other users' activity between the position read and a
+      // later simulation, so receipts are measured on the wallet's own accounts (docs/meteora-operations.md).
       const receipts = new Map<Address,Receipt>();
       for (const vault of vaults) {
         const mint = vault === position.pool.reserve_x ? position.pool.token_x_mint : vault === position.pool.reserve_y ? position.pool.token_y_mint : tokens[0]!.mint;
         const token = uniqueTokens.find(t => t.mint === mint)!;
-        const mintBefore = position.accounts.get(mint)!, mintAfter = final.get(mint);
-        check(mintAfter && mintAfter.owner === mintBefore.owner && !mintAfter.executable && mintAfter.data.length === mintBefore.data.length
-          && mintAfter.data.every((b,i) => b === mintBefore.data[i]), 'simulation changed the mint configuration');
-        const before = withdrawalTokenState(position.accounts.get(vault),token.token,position.poolAddress);
-        const after = withdrawalTokenState(final.get(vault),token.token,position.poolAddress);
-        check(before.amount >= after.amount && before.withheldAmount === after.withheldAmount, 'simulation reduced withheld vault fees or increased vault balance');
-        const transfer = transferAmounts(before.amount-after.amount,token.token.transferFee,epoch);
+        const mintAfter = final.get(mint);
+        check(mintAfter && !mintAfter.executable && sameWithdrawalMint(token.token,decodeTokenMint(mint,mintAfter)), 'simulation changed the mint configuration');
+        withdrawalTokenState(final.get(vault),token.token,position.poolAddress);
         const recipientBefore = position.accounts.get(token.ata) ? withdrawalTokenState(position.accounts.get(token.ata),token.token,input.wallet) : null;
         const recipientAfter = withdrawalTokenState(final.get(token.ata),token.token,input.wallet);
-        check(recipientAfter.amount-(recipientBefore?.amount ?? 0n) === transfer.netAmount,
-          'simulated vault transfer does not match the net recipient receipt');
-        check(recipientAfter.withheldAmount-(recipientBefore?.withheldAmount ?? 0n) === transfer.transferFee,
-          'simulated withheld transfer fee does not match the mint fee');
+        const net = recipientAfter.amount-(recipientBefore?.amount ?? 0n), withheld = recipientAfter.withheldAmount-(recipientBefore?.withheldAmount ?? 0n);
+        check(net >= 0n && withheld >= 0n, 'simulation reduced the wallet token balance');
+        const transfer = transferAmounts(net+withheld,token.token.transferFee,epoch);
+        check(transfer.transferFee === withheld, 'simulated withheld transfer fee does not match the mint fee');
         receipts.set(mint,{...token,amount:transfer.netAmount,grossAmount:transfer.grossAmount,transferFee:transfer.transferFee});
       }
       plan.receipts = [...receipts.values()];

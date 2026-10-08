@@ -1,4 +1,4 @@
-import { address } from '@solana/kit';
+import { address, blockhash } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { MeteoraAdapter } from '../src/protocols/meteora/adapter';
 import { prepareWithdrawAll, totalReceipts } from '../src/protocols/meteora/withdraw';
@@ -83,14 +83,14 @@ describe('Meteora Token-2022 withdrawal',()=>{
     const reward=totalReceipts(p).find(t=>t.mint===REWARD)!;
     expect(reward).toMatchObject({grossAmount:426n,transferFee:6n,amount:420n});
   });
-  it.each(['net','withheld','vault withheld','mint','recipient program','account extension'])('blocks incorrect simulated %s before review/signing',async kind=>{
+  it.each(['net','reduced','withheld','mint','recipient program','account extension'])('blocks incorrect simulated %s before review/signing',async kind=>{
     const f=await meteoraFixture({width:1,token2022:true,transferFee:true});
     const ata=await ataAddress(f.signer.address,USDC,TOKEN_2022);
     f.rpc.mutateSimulation=accounts=>{
       const recipient=accounts.get(ata)!;
-      if(kind==='net')u64(recipient.data,64,1050n); // gross credited as spendable
+      if(kind==='net')u64(recipient.data,64,1200n); // net receipt with too little withheld fee
+      if(kind==='reduced')u64(recipient.data,64,999n);
       if(kind==='withheld')u64(recipient.data,174,0n);
-      if(kind==='vault withheld')u64(accounts.get(f.reserveX)!.data,170,1n);
       if(kind==='mint')accounts.get(USDC)!.data[258]=2;
       if(kind==='recipient program')recipient.owner=TOKEN;
       if(kind==='account extension')recipient.data=extendedBytes(recipient.data.slice(0,165),2,[[8,new Uint8Array([1])],[2,new Uint8Array(8)]]);
@@ -99,6 +99,22 @@ describe('Meteora Token-2022 withdrawal',()=>{
     await expect(executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet:testWalletSigning(f.signer),operation:op(f.signer.address),
       confirm:async()=>{reviewed=true;return true;},beforeSend:async()=>{},confirmed:async()=>{}})).rejects.toThrow();
     expect(reviewed).toBe(false);expect(f.rpc.sent).toHaveLength(0);
+  });
+  it('accepts other users changing vaults, supply and harvested fees between approval and the fresh simulation',async()=>{
+    const f=await meteoraFixture({width:1,token2022:true,transferFee:true});
+    let height=100n;f.rpc.getLatestBlockhash=async()=>{f.rpc.blockhashes++;height+=10n;return {blockhash:blockhash(address('11111111111111111111111111111111')),lastValidBlockHeight:height};};
+    let simulations=0;
+    f.rpc.mutateSimulation=accounts=>{
+      if(++simulations===1)return; // Swaps, mints and fee harvests land while the user reviews.
+      for(const vault of [f.reserveX,f.reserveY]) {const d=accounts.get(vault)!.data;u64(d,64,new DataView(d.buffer,d.byteOffset).getBigUint64(64,true)+5_000n);}
+      const mint=accounts.get(USDC)!.data;u64(mint,36,123_456n);u64(mint,234,77n);
+      u64(accounts.get(f.reserveX)!.data,170,9n);
+    };
+    let reviewed:bigint|undefined;
+    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet:testWalletSigning(f.signer),operation:op(f.signer.address),
+      confirm:async review=>{reviewed??=review.receipts.find(t=>t.mint===USDC)?.amount;return true;},beforeSend:async()=>{},confirmed:async()=>{}});
+    expect(result.status).toBe('confirmed');expect(reviewed).toBe(49n);
+    expect(f.rpc.simulations.length).toBeGreaterThan(result.operation.completed.length);
   });
   it('uses the simulated epoch for fee checks and refreshes estimates at rollover',async()=>{
     const f=await meteoraFixture({width:3,token2022:true,transferFee:true,epoch:4n});

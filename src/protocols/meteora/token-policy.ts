@@ -1,12 +1,20 @@
 import type { Address } from '@solana/kit';
 import type { ChainAccount } from '../../core/accounts';
-import { decodeTokenAccount, NATIVE_TOKEN_2022_MINT, TOKEN_PROGRAM, type TokenMint } from '../../core/tokens';
+import { decodeTokenAccount, NATIVE_TOKEN_2022_MINT, TOKEN_PROGRAM, type TokenMint, type TransferFee } from '../../core/tokens';
 import { check } from './codec';
 
 export function validateWithdrawalMint(mint: TokenMint) {
   check(mint.address !== NATIVE_TOKEN_2022_MINT, 'Native Token-2022 mint is unsupported by the pinned DLMM interface.');
   const excluded = mint.extensions.find(e => ![1, 18, 19].includes(e.type));
   check(!excluded, `${excluded?.name} is unsupported for DLMM withdrawal${mint.transferHookProgram ? ' (active transfer hook)' : ''}.`);
+}
+/** Fields that decide receipts and fees. Supply and harvested fees change with unrelated activity. */
+export function sameWithdrawalMint(before: TokenMint, after: TokenMint) {
+  const fee = (f: TransferFee | undefined) => f ? `${f.epoch}:${f.maximumFee}:${f.basisPoints}` : '';
+  return after.address === before.address && after.program === before.program && after.decimals === before.decimals
+    && after.transferHookProgram === before.transferHookProgram
+    && after.extensions.map(e => e.type).join() === before.extensions.map(e => e.type).join()
+    && fee(after.transferFee?.older) === fee(before.transferFee?.older) && fee(after.transferFee?.newer) === fee(before.transferFee?.newer);
 }
 export function withdrawalTokenState(account: ChainAccount | null | undefined, mint: TokenMint, authority: Address) {
   const state = decodeTokenAccount(account);
