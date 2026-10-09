@@ -1,5 +1,7 @@
 # Lifeboat documentation
 
+Lifeboat is an emergency client for critical actions when a protocol's web infrastructure is unavailable but the Solana blockchain still works. Development favors reliability first and performance second; [AGENTS.md](../AGENTS.md) states the rules that follow from this.
+
 Use the guides below for current app behavior. Dated validation records describe the tested code, wallet, device and operation; a passing build or simulation does not establish successful on-chain execution. Migration plans preserve earlier requirements and results and may describe features that were later removed.
 
 ## Current guides

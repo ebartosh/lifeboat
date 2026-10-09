@@ -1,6 +1,8 @@
 # Lifeboat
 
-Lifeboat is an Android app for ORE operations, Kamino Lending positions and Meteora DLMM positions on Solana. It shows rewards and positions for the selected wallet, helps prepare supported transactions, and lets you sign them on your phone. The app currently uses the public Solana mainnet RPC endpoint.
+Lifeboat is an emergency Android client for Solana positions. Use it to perform critical actions, such as withdrawing, repaying or claiming, when a protocol's website or backend is unavailable but the Solana network still works. It reads positions directly from the blockchain and builds transactions itself, so it needs only an RPC endpoint and your wallet.
+
+Lifeboat currently supports ORE, Kamino Lending positions and Meteora DLMM positions. It shows rewards and positions for the selected wallet, helps prepare supported transactions, and lets you sign them on your phone. The app currently uses the public Solana mainnet RPC endpoint.
 
 ## Features
 
