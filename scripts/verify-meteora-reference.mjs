@@ -45,20 +45,25 @@ for (const options of [{width:70},{lower:-71,width:142,reward:true},{width:1400}
   assert.equal(result.feeY.toString(),position.bins.reduce((n,b)=>n+b.feeY,0n).toString());
   assert.equal(result.rewardOne.toString(),position.bins.reduce((n,b)=>n+b.rewards[0],0n).toString());
   const plan=await prepareWithdrawAll({rpc:f.rpc,wallet:f.signer.address,position:POSITION});
-  const ix=plan.instructions.at(-1);
-  const name=plan.step.kind==='remove'?'removeLiquidityByRange2':'closePosition2';
-  const definition=program.idl.instructions.find(x=>x.name===name);
-  for (const [index,account] of definition.accounts.entries()) {
-    if (account.name === 'tokenXProgram') assert.equal(ix.accounts[index].address,f.rpc.accounts.get(position.tokens[0].mint).owner);
-    if (account.name === 'tokenYProgram') assert.equal(ix.accounts[index].address,f.rpc.accounts.get(position.tokens[1].mint).owner);
+  // The DLMM instructions follow Compute Budget and ATA creation, one per action in order.
+  const dlmm=plan.instructions.slice(-plan.step.actions.length);
+  const names={remove:'removeLiquidityByRange2',fees:'claimFee2',reward:'claimReward2',close:'closePosition2'};
+  for (const [i,action] of plan.step.actions.entries()) {
+    const ix=dlmm[i],definition=program.idl.instructions.find(x=>x.name===names[action.kind]);
+    for (const [index,account] of definition.accounts.entries()) {
+      if (['tokenXProgram','tokenProgramX'].includes(account.name)) assert.equal(ix.accounts[index].address,f.rpc.accounts.get(position.tokens[0].mint).owner);
+      if (['tokenYProgram','tokenProgramY'].includes(account.name)) assert.equal(ix.accounts[index].address,f.rpc.accounts.get(position.tokens[1].mint).owner);
+    }
+    const strict=Object.fromEntries(definition.accounts.map((a,j)=>[a.name,pk(ix.accounts[j].address)]));
+    const method=action.kind==='remove'?program.methods.removeLiquidityByRange2(action.lower,action.upper,10000,{slices:[]})
+      :action.kind==='fees'?program.methods.claimFee2(action.lower,action.upper,{slices:[]})
+      :action.kind==='reward'?program.methods.claimReward2(new BN(action.rewardIndex),action.lower,action.upper,{slices:[]}):program.methods.closePosition2();
+    const reference=await method.accountsStrict(strict).remainingAccounts(ix.accounts.slice(definition.accounts.length).map(a=>({pubkey:pk(a.address),isSigner:false,isWritable:true}))).instruction();
+    assert.deepEqual(Buffer.from(ix.data),reference.data);
+    assert.deepEqual(ix.accounts.map(a=>[a.address,!!(a.role&2),!!(a.role&1)]),reference.keys.map(a=>[a.pubkey.toBase58(),a.isSigner,a.isWritable]));
   }
-  const strict=Object.fromEntries(definition.accounts.map((a,i)=>[a.name,pk(ix.accounts[i].address)]));
-  const method=plan.step.kind==='remove'?program.methods.removeLiquidityByRange2(plan.step.lower,plan.step.upper,10000,{slices:[]}):program.methods.closePosition2();
-  const reference=await method.accountsStrict(strict).remainingAccounts(ix.accounts.slice(definition.accounts.length).map(a=>({pubkey:pk(a.address),isSigner:false,isWritable:true}))).instruction();
-  assert.deepEqual(Buffer.from(ix.data),reference.data);
-  assert.deepEqual(ix.accounts.map(a=>[a.address,!!(a.role&2),!!(a.role&1)]),reference.keys.map(a=>[a.pubkey.toBase58(),a.isSigner,a.isWritable]));
   assert.equal((await binArrayAddress(f.poolKey,-2)),sdk.deriveBinArray(pk(f.poolKey),new BN(-2),pk(PROGRAM))[0].toBase58());
-  report.push({options,decodedBins:position.bins.length,amountsAndInstruction:'match'});
+  report.push({options,decodedBins:position.bins.length,step:plan.step.id,amountsAndInstructions:'match'});
 }
 // Independently exercise all claim instruction arguments and account roles.
 for (const [kind,name] of [['fees','claimFee2'],['reward','claimReward2']]) {

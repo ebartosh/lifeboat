@@ -1,5 +1,6 @@
 import {
   appendTransactionMessageInstructions,
+  blockhash as toBlockhash,
   getTransactionEncoder,
   getTransactionDecoder,
   compileTransaction,
@@ -65,6 +66,16 @@ export type TransactionReview = {
   lastValidBlockHeight: bigint;
   walletChanges?: WalletTransactionChanges;
 };
+
+/** Wire size of a legacy transaction paid by `wallet`; the blockhash value does not change it. */
+export function legacyTransactionSize(wallet: Address, instructions: readonly Instruction[]): number {
+  return getTransactionEncoder().encode(compileTransaction(pipe(
+    createTransactionMessage({ version: "legacy" }),
+    message => setTransactionMessageFeePayer(wallet, message),
+    message => setTransactionMessageLifetimeUsingBlockhash({ blockhash: toBlockhash('11111111111111111111111111111111'), lastValidBlockHeight: 0n }, message),
+    message => appendTransactionMessageInstructions(instructions, message),
+  ))).length;
+}
 
 function copyTransaction(transaction: Transaction): Transaction {
   return { ...transaction, ...getTransactionDecoder().decode(getTransactionEncoder().encode(transaction)) };

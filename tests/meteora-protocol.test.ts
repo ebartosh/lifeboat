@@ -5,7 +5,8 @@ import { address, getTransactionEncoder } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { MeteoraAdapter } from '../src/protocols/meteora/adapter';
 import { decodeAccount, decodePosition, LEGACY_DISCRIMINATOR, PROGRAM, TOKEN_2022, ZERO, type PoolState } from '../src/protocols/meteora/codec';
-import { prepareWithdrawAll, withdrawalSteps } from '../src/protocols/meteora/withdraw';
+import { PACKET_BUDGET, prepareWithdrawAll, withdrawalActions } from '../src/protocols/meteora/withdraw';
+import { validateMeteoraStep } from '../src/mobile/pending-store';
 import { binArrayIndex, estimateBins, Q64 } from '../src/protocols/meteora/math';
 import { ataAddress, binArrayAddress, dlmmInstruction } from '../src/protocols/meteora/instructions';
 import { executeMeteoraWithRpc, type MeteoraOperation } from '../src/operations/meteora';
@@ -25,7 +26,7 @@ describe('Meteora pinned protocol',()=>{
     expect(f.rpc.filters).toHaveLength(2);expect(f.rpc.filters[0]).toHaveLength(2);
     expect(f.rpc.filters[0]?.map(x=>x.offset)).toEqual([0,40]);
     expect(binArrayIndex(-71)).toBe(-2);expect(binArrayIndex(-1)).toBe(-1);
-    expect(withdrawalSteps(statuses[0]!.position!).filter(s=>s.kind==='remove')).toHaveLength(20);
+    expect(withdrawalActions(statuses[0]!.position!).filter(s=>s.kind==='remove')).toHaveLength(20);
   });
   it('rejects truncated, invalid-range and incorrect discriminator position bytes',async()=>{
     const f=await meteoraFixture({width:71});const account=f.rpc.accounts.get(POSITION)!;
@@ -83,12 +84,12 @@ describe('Meteora pinned protocol',()=>{
   it('creates only the required ATAs, quotes rent and verifies simulation changes',async()=>{
     const f=await meteoraFixture({width:1,missingAta:true,oneSided:true});
     const plan=await prepareWithdrawAll({rpc:f.rpc,wallet:f.signer.address,position:POSITION});
-    expect(plan!.ataRent).toBe(4_078_560n);expect(plan!.instructions).toHaveLength(4);
+    expect(plan!.ataRent).toBe(4_078_560n);expect(plan!.instructions).toHaveLength(6);
     expect(plan!.remainingReceipts.map(t=>t.amount)).toEqual([54n,0n]);
     const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async review=>{expect(review.receipts.every(t=>t.amount>=0n)).toBe(true);return true;},beforeSend:async()=>{},confirmed:async()=>{}});
-    expect(result.status).toBe('confirmed');expect(result.operation.completed.map(c=>c.step.kind)).toEqual(['remove','fees','close']);
-    expect(f.rpc.blockhashes).toBe(6);expect(f.rpc.simulations).toHaveLength(3);
+    expect(result.status).toBe('confirmed');expect(result.operation.completed.map(c=>c.step.actions.map(a=>a.kind).join('+'))).toEqual(['remove+fees+close']);
+    expect(f.rpc.blockhashes).toBe(2);expect(f.rpc.simulations).toHaveLength(1);
     expect(f.rpc.sent.every(tx=>getTransactionEncoder().encode(tx).length<=1232)).toBe(true);
     expect(f.rpc.accounts.get(POSITION)).toBeNull();
   });
@@ -97,12 +98,12 @@ describe('Meteora pinned protocol',()=>{
     u64(d,feeOffset(70)+32,7n);u64(d,rewardOffset(70)+32,9n);
     const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async()=>true,beforeSend:async()=>{},confirmed:async()=>{}});
-    expect(result.operation.completed.map(c=>c.step.kind)).toEqual(['fees','reward','close']);
+    expect(result.operation.completed.map(c=>c.step.actions.map(a=>a.kind).join('+'))).toEqual(['fees+reward+close']);
   });
   it('closes an already empty position without creating ATAs',async()=>{
     const f=await meteoraFixture({shares:false,missingAta:true});
     const plan=await prepareWithdrawAll({rpc:f.rpc,wallet:f.signer.address,position:POSITION});
-    expect(plan!.step.kind).toBe('close');expect(plan!.ataRent).toBe(0n);expect(plan!.instructions).toHaveLength(2);
+    expect(plan!.step.id).toBe('close');expect(plan!.ataRent).toBe(0n);expect(plan!.instructions).toHaveLength(2);
   });
   it('accepts only null or the exact zero-lamport system tombstone as a closed account',async()=>{
     const f=await meteoraFixture({shares:false});
@@ -130,19 +131,41 @@ describe('Meteora pinned protocol',()=>{
       }).catch(e=>e);
     expect(result).toBeInstanceOf(Error);expect(f.rpc.sent).toHaveLength(0);
   });
-  it('freshly plans multiple arrays/transactions and all rewards before a checked close',async()=>{
+  it('packs ranges, claims and the close into as few transactions as the limits allow',async()=>{
     const f=await meteoraFixture({width:142,reward:true});const completed:MeteoraOperation[]=[];
     const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
       confirm:async()=>true,beforeSend:async()=>{},confirmed:async op=>{completed.push(op);}});
-    expect(result.status).toBe('confirmed');expect(result.operation.completed.map(c=>c.step.kind)).toEqual(['remove','remove','remove','fees','fees','fees','reward','reward','reward','close']);
-    expect(completed).toHaveLength(10);expect(f.rpc.blockhashes).toBe(20);
+    expect(result.status).toBe('confirmed');expect(result.operation.completed.map(c=>c.step.actions.map(a=>a.kind).join('+'))).toEqual(['remove+fees+reward+remove+fees','reward+remove+fees+reward+close']);
+    expect(completed).toHaveLength(2);expect(f.rpc.blockhashes).toBe(4);
+  });
+  it.each([[{width:1400,lower:-71},10],[{width:1400,lower:-71,reward:true,missingAta:true},13],[{width:70,reward:true,missingAta:true},1]] as const)(
+    'withdraws %j in %i transactions within the packet budget',async(options,count)=>{
+    const f=await meteoraFixture(options);
+    const result=await executeMeteoraWithRpc(f.rpc,{wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:operation(f.signer.address),
+      confirm:async()=>true,beforeSend:async()=>{},confirmed:async()=>{}});
+    expect(result.status).toBe('confirmed');expect(f.rpc.sent).toHaveLength(count);
+    expect(f.rpc.sent.every(tx=>getTransactionEncoder().encode(tx).length<=PACKET_BUDGET)).toBe(true);
+    expect(result.operation.completed.at(-1)!.step.actions.at(-1)!.kind).toBe('close');
+    expect(f.rpc.accounts.get(POSITION)).toBeNull();
+  });
+  it('claims fees in every range that holds liquidity, so the close survives fees accrued after the read',async()=>{
+    const f=await meteoraFixture({width:70});const position=(await adapter.readPosition(f.rpc,f.signer.address,POSITION))!;
+    position.bins.forEach(bin=>{bin.feeX=0n;bin.feeY=0n;});
+    expect(withdrawalActions(position).map(a=>a.kind)).toEqual(['remove','fees','close']);
+  });
+  it('reads progress records saved before steps held several actions',()=>{
+    const legacy={id:'reward:-35:34:1',kind:'reward',lower:-35,upper:34,rewardIndex:1};
+    expect(validateMeteoraStep(legacy)).toEqual({id:'reward:-35:34:1',actions:[legacy]});
+    const close={id:'close',kind:'close',lower:0,upper:0};
+    expect(()=>validateMeteoraStep({id:'close,remove:-35:34',actions:[close,{id:'remove:-35:34',kind:'remove',lower:-35,upper:34}]})).toThrow();
+    expect(()=>validateMeteoraStep({id:'remove:-35:35',actions:[{id:'remove:-35:35',kind:'remove',lower:-35,upper:35}]})).toThrow();
   });
   it('stops on cancellation and resumes from confirmed state without repeating a step',async()=>{
-    const f=await meteoraFixture({width:1});let saved=operation(f.signer.address),reviews=0;
+    const f=await meteoraFixture({width:142,reward:true});let saved=operation(f.signer.address),reviews=0;
     const input={wallet:f.signer.address,signWithWallet: testWalletSigning(f.signer),operation:saved,confirm:async()=>++reviews===1,
       beforeSend:async()=>{},confirmed:async(op:MeteoraOperation)=>{saved=op;}};
     expect((await executeMeteoraWithRpc(f.rpc,input)).status).toBe('partial');expect(f.rpc.sent).toHaveLength(1);
     const final=await executeMeteoraWithRpc(f.rpc,{...input,operation:saved,confirm:async()=>true});
-    expect(final.operation.completed.map(c=>c.step.kind)).toEqual(['remove','fees','close']);expect(f.rpc.sent).toHaveLength(3);
+    expect(final.operation.completed.map(c=>c.step.actions.map(a=>a.kind).join('+'))).toEqual(['remove+fees+reward+remove+fees','reward+remove+fees+reward+close']);expect(f.rpc.sent).toHaveLength(2);
   });
 });

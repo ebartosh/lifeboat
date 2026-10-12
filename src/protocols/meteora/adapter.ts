@@ -1,11 +1,12 @@
 import { address, getAddressEncoder, getBase58Decoder, type Address } from '@solana/kit';
 import type { AccountFilter, ChainAccount, LendingReader } from '../../core/accounts';
 import { check, CLOCK, SYSVAR, decodeAccount, decodePosition, discriminator, hasDiscriminator, LEGACY_DISCRIMINATOR,
-  isClosedAccount, PROGRAM, TOKEN, WSOL, ZERO, type Bin, type BinArray, type PoolState, type PositionState } from './codec';
+  isClosedAccount, PROGRAM, TOKEN, ZERO, type Bin, type BinArray, type PoolState, type PositionState } from './codec';
 import { ataAddress, binArrayAddress, integerBytes, keyBytes, pda } from './instructions';
 import { binArrayIndex, estimateBins, type BinEstimate } from './math';
-import { decodeTokenMint, TOKEN_2022_PROGRAM, type TokenMint } from '../../core/tokens';
+import { decodeTokenMint, metaplexMetadataAddress, onChainSymbol, TOKEN_2022_PROGRAM, type TokenMint } from '../../core/tokens';
 import { validateWithdrawalMint, withdrawalTokenState } from './token-policy';
+import { tokenSymbol } from '../../core/format';
 export const MAINNET_GENESIS = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
 export interface MeteoraReader extends Pick<LendingReader,'getAccount'|'getAccounts'> {
   getGenesisHash(): Promise<string>;
@@ -15,10 +16,8 @@ export interface MeteoraReader extends Pick<LendingReader,'getAccount'|'getAccou
 export type Token = { mint: Address; decimals: number; symbol: string; ata: Address; token: TokenMint };
 export type MeteoraPosition = { address: Address; wallet: Address; poolAddress: Address; state: PositionState; pool: PoolState;
   slot: bigint; account: ChainAccount; accounts: Map<Address, ChainAccount | null>; binArrays: Map<number, Address>;
-  bins: BinEstimate[]; tokens: Token[]; rewards: (Token | null)[]; bitmap: Address; epoch: bigint };
+  bins: BinEstimate[]; tokens: Token[]; rewards: (Token | null)[]; bitmap: Address; epoch: bigint; timestamp: bigint };
 export type MeteoraStatus = { address: Address; poolAddress?: Address; reason?: string; position?: MeteoraPosition };
-const known = new Map<string, string>([[WSOL,'WSOL'], ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v','USDC']]);
-function symbol(mint: Address) { return known.get(mint) ?? `${mint.slice(0,4)}…${mint.slice(-4)}`; }
 export async function validatePoolPda(key: Address, pool: PoolState) {
   const ordered = [pool.token_x_mint, pool.token_y_mint].sort((a,b) => {
     const x = getAddressEncoder().encode(a), y = getAddressEncoder().encode(b);
@@ -74,8 +73,10 @@ export class MeteoraAdapter {
     const bitmapKey = await pda(['bitmap',keyBytes(poolKey)]);
     const mints = [initialPool.token_x_mint, initialPool.token_y_mint, ...initialPool.reward_infos.filter(r => r.mint !== ZERO).map(r => r.mint)];
     // Mint ownership is discovered first, then verified again in the final coherent snapshot.
-    const mintSnapshot = await rpc.getAccounts(mints, second.slot);
-    check(mintSnapshot.slot >= second.slot && mintSnapshot.accounts.length === mints.length, 'invalid mint snapshot');
+    // Metaplex metadata rides along for display symbols only.
+    const metadataKeys = await Promise.all(mints.map(metaplexMetadataAddress));
+    const mintSnapshot = await rpc.getAccounts([...mints, ...metadataKeys], second.slot);
+    check(mintSnapshot.slot >= second.slot && mintSnapshot.accounts.length === mints.length + metadataKeys.length, 'invalid mint snapshot');
     const discovered = mints.map((mint, i) => decodeTokenMint(mint, mintSnapshot.accounts[i]));
     const atas = await Promise.all(discovered.map(mint => ataAddress(wallet,mint.address,mint.program)));
     const programs = [...new Set(discovered.map(mint => mint.program))];
@@ -105,7 +106,7 @@ export class MeteoraAdapter {
       validateWithdrawalMint(token);
       const ata = await ataAddress(wallet,mint,token.program);
       if (accounts.get(ata)) withdrawalTokenState(accounts.get(ata),token,wallet);
-      return { mint,ata,decimals:token.decimals,symbol:symbol(mint),token };
+      return { mint,ata,decimals:token.decimals,symbol:tokenSymbol(mint,onChainSymbol(token,mintSnapshot.accounts[mints.length + i])),token };
     }));
     for (const [i,flag] of [pool.token_mint_x_program_flag,pool.token_mint_y_program_flag].entries())
       check((flag === 0 || flag === 1) && tokens[i]!.token.program === (flag === 0 ? TOKEN : TOKEN_2022_PROGRAM), 'pool token program flag/mint owner mismatch');
@@ -130,6 +131,6 @@ export class MeteoraAdapter {
     const estimates = estimateBins(state,pool,bins,timestamp);
     for (const bin of estimates) check(bins.has(bin.id) || (!bin.share && !bin.feeX && !bin.feeY && bin.rewards.every(v => v === 0n)), 'active position bin array is missing');
     return { address:key,wallet,poolAddress:poolKey,state,pool,slot:snapshot.slot,account,accounts,binArrays:arrayKeys,
-      bins:estimates,tokens:tokens.slice(0,2),rewards,bitmap:bitmapAccount ? bitmapKey : PROGRAM,epoch };
+      bins:estimates,tokens:tokens.slice(0,2),rewards,bitmap:bitmapAccount ? bitmapKey : PROGRAM,epoch,timestamp };
   }
 }

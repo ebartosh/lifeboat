@@ -108,14 +108,4 @@ export const mwaAdapter: WalletAdapter = {
       return signed;
     } catch (error) { trace.failure(phase, error); throw error; }
   },
-
-  async disconnect(connection) {
-    try {
-      await transact(wallet => wallet.deauthorize({ auth_token: connection.authToken }),
-        connection.walletUriBase ? { baseUri: connection.walletUriBase } : undefined);
-      await waitUntilForeground();
-    } catch {
-      // The local authorization is still forgotten even if the wallet is unavailable.
-    }
-  },
 };

@@ -12,7 +12,6 @@ export interface WalletAdapter {
   connect(): Promise<ExternalConnection>;
   sign(connection: ExternalConnection, transaction: Transaction,
     onAuthorized?: (connection: ExternalConnection) => Promise<void>): Promise<{ transaction: Transaction; connection: ExternalConnection }>;
-  disconnect(connection: ExternalConnection): Promise<void>;
 }
 
 /** Persists external-wallet authorization; private wallet keys stay in the wallet app. */
@@ -53,11 +52,6 @@ export class ExternalWallet {
     return signed.transaction;
   }
 
-  async disconnect(): Promise<void> {
-    const connection = await this.read();
-    if (connection) await this.adapter.disconnect(connection);
-    await this.files.remove('external-wallet.json');
-  }
-
-  async forget(): Promise<void> { await this.files.remove('external-wallet.json'); }
+  // Local only: MWA deauthorize would reopen the wallet app, and a token Lifeboat no longer holds cannot sign.
+  async disconnect(): Promise<void> { await this.files.remove('external-wallet.json'); }
 }

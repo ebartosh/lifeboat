@@ -1,4 +1,4 @@
-﻿import { address, generateKeyPairSigner, type Transaction, type Instruction } from "@solana/kit";
+﻿import { address, AccountRole, generateKeyPairSigner, type Transaction, type Instruction } from "@solana/kit";
 import { borrows, deposits, WSOL_MINT } from "./adapter";
 import { ZERO, check, decode, tokenState, support, verifyProgram } from "./accounts";
 import type { Obligation } from "./state";
@@ -9,10 +9,12 @@ import { SF, U64_MAX, ceilDiv, debtSf, parseAmount } from "./math";
 export async function prepareRepay(options: PreparationOptions): Promise<OperationPlan | null> {
   const { adapter, rpc, wallet } = options;
   const useSol = options.token.toUpperCase() === "SOL";
+  const fromBalance = options.amount === "balance";
+  check(!fromBalance || !useSol, "wallet balance repayment spends a token ATA; enter an amount or all for native SOL");
   const selection = await adapter.operationToken(rpc, wallet, options.position, "repay", useSol ? WSOL_MINT : options.token, options.reserve);
   if (!selection) return null;
   const { token } = selection;
-  const requested = options.amount === "all" ? null : parseAmount(options.amount, token.decimals);
+  const parsed = options.amount === "all" || fromBalance ? null : parseAmount(options.amount, token.decimals);
   const temporary = useSol ? await generateKeyPairSigner() : undefined;
   const reserveKey = address(token.reserve);
   let position = await adapter.loadPosition(rpc, wallet, options.position, selection.minSlot, {
@@ -33,6 +35,9 @@ export async function prepareRepay(options: PreparationOptions): Promise<Operati
   const recipient = temporary?.address ?? await adapter.ata(wallet, address(token.mint));
   const existing = position.accounts.get(recipient);
   const balance = existing ? tokenState(existing, address(token.mint), wallet).amount : 0n;
+  // Kamino settles min(debt, amount), so offering the whole ATA balance never overpays.
+  if (fromBalance) check(balance > 0n, `insufficient ${token.symbol} in wallet ATA; the balance is zero`);
+  const requested = fromBalance ? balance : parsed;
   const setup: Instruction[] = [computeBudget()];
   const farms = await operationFarms(adapter, position, reserve.farmDebt);
   let nativeSol: NativeSolEstimate | undefined;
@@ -49,11 +54,16 @@ export async function prepareRepay(options: PreparationOptions): Promise<Operati
     setup.push(...native.setup);
     closeTemporary = native.close;
   } else check(existing && balance >= estimate, `insufficient ${token.symbol} in wallet ATA; fund it before repayment${token.symbol === "WSOL" ? " or use --token SOL to wrap native SOL" : ""}`);
-  const operation = await adapter.programInterface.buildInstruction("repayObligationLiquidityV2", { liquidityAmount: requested ?? U64_MAX }, {
+  const repay = await adapter.programInterface.buildInstruction("repayObligationLiquidityV2", { liquidityAmount: requested ?? U64_MAX }, {
     owner: wallet, obligation: position.address, lendingMarket: adapter.marketAddress,
     repayReserve: reserveKey, reserveLiquidityMint: address(token.mint),
     reserveDestinationLiquidity: reserve.liquidity.supplyVault, userSourceLiquidity: recipient, ...farms,
   });
+  // In eMode KLend lowers each collateral reserve's group debt tracker, so it
+  // consumes every active deposit reserve, in obligation order, as writable.
+  const groupDeposits = position.state.elevationGroup === 0 ? []
+    : deposits(position.state).map(d => ({ address: d.depositReserve, role: AccountRole.WRITABLE }));
+  const operation = { ...repay, accounts: [...repay.accounts!, ...groupDeposits] };
   const instructions = [...setup, ...await adapter.refreshInstructions(position), operation, ...(closeTemporary ? [closeTemporary] : [])];
   const reserveKeys = [...position.reserves.keys()];
   const simulationAccounts = [position.address, recipient, adapter.marketAddress, ...reserveKeys,

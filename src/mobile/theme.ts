@@ -20,7 +20,7 @@ export const ui = StyleSheet.create({
   label: { fontFamily: medium, fontSize: 12, lineHeight: 18, color: colors.navy },
   note: { fontFamily: mono, fontSize: 13, lineHeight: 18, color: colors.secondary, flexShrink: 1 },
   stack: { gap: 12, minWidth: 0 },
-  // Full details on the left; `actions` holds the financial commands on the right.
+  // Details on the left; `actions` holds the financial commands on the right.
   commands: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 16 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', columnGap: 16,
     marginLeft: 'auto' },

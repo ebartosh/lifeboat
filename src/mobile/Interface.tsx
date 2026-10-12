@@ -57,8 +57,11 @@ export function PanePair({ list, details }: { list: ReactNode; details: ReactNod
     <View style={wide && styles.pane}>{list}</View><View style={wide && styles.pane}>{details}</View>
   </View>;
 }
-export function Notice({ children, error = false, success = false }: { children: ReactNode; error?: boolean; success?: boolean }) {
-  return <View style={styles.notice}><Body accessibilityLiveRegion="polite">
+/** `current` marks the operation in progress with the selected-row fill: it is the object the app is working on. */
+export function Notice({ children, error = false, success = false, current = false }: {
+  children: ReactNode; error?: boolean; success?: boolean; current?: boolean;
+}) {
+  return <View style={[styles.notice, current && styles.selected]}><Body accessibilityLiveRegion="polite">
     {error ? <Text style={[styles.strong, { color: colors.danger }]}>Error: </Text>
       : success ? <Text style={[styles.strong, { color: colors.ok }]}>✓ </Text> : null}{children}
   </Body></View>;
@@ -95,19 +98,19 @@ export function Section({ title, children, divider = true }: { title: string; ch
   </View>;
 }
 export function Tabs<T extends string>({ items, selected, onSelect }: {
-  items: { id: T; title: string }[]; selected: T; onSelect: (id: T) => void;
+  items: { id: T; title: string; hotkey?: number }[]; selected: T; onSelect: (id: T) => void;
 }) {
   const { width, fontScale } = useWindowDimensions();
   // Stack the tabs once the longest monospaced label no longer fits its share of the screen-wide bar.
   const longest = Math.max(...items.map(item => item.title.length));
   const stacked = (width - 26) / items.length < longest * 8.4 * fontScale + 12;
   return <View accessibilityRole="tablist" style={[styles.tabs, stacked && styles.tabsStacked]}>
-    {items.map((item, index) => <Tab key={item.id} title={item.title} first={index === 0} stacked={stacked}
+    {items.map((item, index) => <Tab key={item.id} title={item.title} hotkey={item.hotkey} first={index === 0} stacked={stacked}
       selected={item.id === selected} onPress={() => onSelect(item.id)} />)}
   </View>;
 }
-function Tab({ title, selected, first, stacked, onPress }: {
-  title: string; selected: boolean; first: boolean; stacked: boolean; onPress: () => void;
+function Tab({ title, hotkey, selected, first, stacked, onPress }: {
+  title: string; hotkey?: number; selected: boolean; first: boolean; stacked: boolean; onPress: () => void;
 }) {
   const [focused, setFocused] = useState(false);
   return <Pressable accessibilityRole="tab" accessibilityState={{ selected }} accessibilityLabel={title} onPress={onPress}
@@ -115,29 +118,38 @@ function Tab({ title, selected, first, stacked, onPress }: {
     style={({ pressed }) => [styles.tab, stacked ? [styles.tabStacked, !first && styles.tabDividerStacked]
       : !first && styles.tabDivider, selected && (stacked ? styles.tabSelectedStacked : styles.tabSelected),
       pressed && styles.tabPressed, focused && styles.focus]}>
-    <HotkeyLabel title={title} style={[styles.tabLabel, selected && { color: colors.navy }]} />
+    <HotkeyLabel title={title} at={hotkey} style={[styles.tabLabel, selected && { color: colors.navy }]} />
   </Pressable>;
 }
-export function DataRow({ title, titleColor, kind, address, value, valueColor, selected, onPress }: {
-  title: string; titleColor?: string; kind: string; address?: string; value?: string; valueColor?: string;
+/**
+ * One position: what it is and the amounts it holds or recovers. `status` appears only when something limits the
+ * action (unavailable, vesting, locked, partial), so a fully recoverable position carries no label.
+ */
+export function DataRow({ title, titleColor, kind, address, values = [], status, selected, onPress }: {
+  title: string; titleColor?: string; kind: string; address?: string; values?: readonly string[]; status?: string;
   selected: boolean; onPress: () => void;
 }) {
   const [focused, setFocused] = useState(false);
   const detail = address ? `${kind} · ${address}` : kind;
   return <Pressable accessibilityRole="button" accessibilityState={{ selected }}
-    accessibilityLabel={`${title}. ${detail}${value ? `. ${value}` : ''}`}
-    accessibilityHint="Select an entry and show details" onPress={onPress}
+    accessibilityLabel={[title, detail, ...(values.length ? [values.join(', ')] : []), ...(status ? [status] : [])].join('. ')}
+    accessibilityHint="Select a position and show details" onPress={onPress}
     onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
     style={({ pressed }) => [styles.row, selected && styles.selected, pressed && styles.pressed, focused && styles.focus]}>
     <Text style={ui.body}>{selected ? '> ' : '  '}</Text>
     <View style={styles.rowText}>
       <View style={styles.rowLine}>
         <Body style={[styles.grow, titleColor ? { color: titleColor } : null]}>{title}</Body>
-        {!!value && <Amount value={value} style={[styles.rowValue, valueColor ? { color: valueColor } : null]} />}
+        {!!values.length && <View style={styles.rowValues}>
+          {values.map(value => <Amount key={value} value={value} style={styles.rowValue} />)}
+        </View>}
       </View>
-      <Text style={[ui.label, { color: selected ? colors.navy : colors.secondary }]}>
-        {kind}{!!address && <Text style={{ color: colors.address }}>{` · ${address}`}</Text>}
-      </Text>
+      <View style={styles.rowLine}>
+        <Text style={[ui.label, styles.grow, { color: selected ? colors.navy : colors.secondary }]}>
+          {kind}{!!address && <Text style={{ color: colors.address }}>{` · ${address}`}</Text>}
+        </Text>
+        {!!status && <Text style={[ui.label, styles.rowValue, { color: colors.danger }]}>{status}</Text>}
+      </View>
     </View>
   </Pressable>;
 }
@@ -162,7 +174,6 @@ export function AmountInput({ label, ...props }: TextInputProps & { label: strin
     autoCorrect={false} autoCapitalize="none" placeholderTextColor={colors.navy}
     onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
     style={[ui.body, styles.input, focused && styles.focus, props.editable === false && { backgroundColor: colors.surface }]} />
-    {!!props.value && <Body selectable>{props.value}</Body>}
   </View>;
 }
 let openDialogs = 0;
@@ -271,7 +282,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', minWidth: 48, minHeight: 48, padding: 8, borderBottomWidth: 1, borderColor: colors.line },
   rowText: { flexGrow: 1, flexShrink: 1, gap: 2, minWidth: 0 },
   rowLine: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8 },
-  rowValue: { marginLeft: 'auto', textAlign: 'right', minWidth: 0 },
+  rowValues: { marginLeft: 'auto', alignItems: 'flex-end', flexShrink: 1, minWidth: 0, maxWidth: '100%' },
+  rowValue: { marginLeft: 'auto', textAlign: 'right', minWidth: 0, maxWidth: '100%' },
   selected: { backgroundColor: colors.softOrange }, pressed: { borderBottomColor: colors.navy, borderBottomWidth: 2 },
   addressHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: -8 },
   address: { fontFamily: mono, color: colors.address, fontVariant: ['no-common-ligatures', 'no-contextual'] },

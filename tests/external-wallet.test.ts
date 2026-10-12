@@ -15,7 +15,6 @@ async function setup() {
   const adapter: WalletAdapter = {
     connect: vi.fn(async () => connection),
     sign: vi.fn(async (connected, transaction: Transaction) => ({ transaction, connection: connected })),
-    disconnect: vi.fn(async () => undefined),
   };
   return { signer, connection, files, io, adapter, wallet: new ExternalWallet(io, adapter) };
 }
@@ -32,7 +31,7 @@ describe('external wallet authorization', () => {
     expect(f.io.remove).not.toHaveBeenCalled();
     expect(await f.wallet.read()).toEqual(f.connection);
   });
-  it('never reads or deletes a legacy key through signing, cancellation, disconnect or forget', async () => {
+  it('never reads or deletes a legacy key through signing, cancellation or disconnect', async () => {
     const f = await setup();
     f.files.set('wallet.json', 'corrupt legacy key');
     f.files.set('wallet.json.tmp', 'interrupted legacy write');
@@ -43,7 +42,6 @@ describe('external wallet authorization', () => {
     await expect(f.wallet.connect()).rejects.toThrow('cancelled');
     expect(await f.wallet.read()).toEqual(f.connection);
     await f.wallet.disconnect();
-    await f.wallet.forget();
     expect(await f.wallet.read()).toBeNull();
     expect(f.files.get('wallet.json')).toBe('corrupt legacy key');
     expect(f.files.get('wallet.json.tmp')).toBe('interrupted legacy write');

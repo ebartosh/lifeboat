@@ -16,11 +16,7 @@ export const binArrayAddress = (pool: Address, index: number) => pda(['bin_array
 export const ataAddress = (wallet: Address, mint: Address, program: TokenProgram = TOKEN) => associatedTokenAddress(wallet, mint, program);
 export const createAta = (wallet: Address, mint: Address, ata: Address, program: TokenProgram = TOKEN) =>
   createAssociatedTokenIdempotent(wallet, wallet, mint, ata, program);
-export function computeBudget(): Instruction {
-  const data = new Uint8Array(5); data[0] = 2;
-  new DataView(data.buffer).setUint32(1, 1_400_000, true);
-  return { programAddress: address('ComputeBudget111111111111111111111111111111'), data };
-}
+export { computeBudget } from '../../core/packing';
 export type StepKind = 'remove' | 'fees' | 'reward' | 'close';
 const names = { remove: 'remove_liquidity_by_range2', fees: 'claim_fee2', reward: 'claim_reward2', close: 'close_position2' };
 /** Exact Anchor Borsh arguments and IDL account order; empty transfer-hook slices. */

@@ -14,7 +14,11 @@ Canceling before submission sends nothing. If the response is lost, the app goes
 
 ## Direct staking
 
-The app shows the direct ORE staking position and the amount available to withdraw. Enter an ORE amount, review the prepared transaction, and confirm the signature. The separate `ore-stake` program interface and withdrawal limits are documented in [Withdraw interface](ore-stake-withdraw.md).
+The app shows the direct ORE staking position and the amount available to withdraw. Enter an ORE amount, review the prepared transaction, and confirm the signature. Withdrawing does not claim staking rewards.
+
+“Staking rewards” shows the estimated claimable ORE. The “Claim rewards” command claims everything accrued when the transaction executes and keeps the staked balance. The review shows the payout measured by simulation; the result cannot be lower. If the wallet's ORE token account is missing, the program creates it using SOL for rent.
+
+The separate `ore-stake` program interface, account layout and limits are documented in [Withdraw and Claim interface](ore-stake-withdraw.md).
 
 ## Protocol interface
 

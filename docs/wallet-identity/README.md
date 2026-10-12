@@ -4,6 +4,24 @@ Phantom 26.31.1 repeatedly rejected reuse with MWA error -1, accepted fresh auth
 
 The app accepts `EXPO_PUBLIC_WALLET_IDENTITY_URI` for the owner's public HTTPS project page. The URI must not contain credentials, a query or a fragment. Connection and signing use the same identity. This TS-only option does not configure Android App Links by itself. The October 6 diagnostic APK uses name-only identity. On October 7, the user selected a project-page URI experiment and the local `.env.local` was set to `https://ebartosh.github.io/lifeboat/` after verifying the public page. This is a URI-only experiment, not verified domain identity.
 
+## Root-host association published on October 8, 2026
+
+The user authorized creating the public repository [ebartosh/ebartosh.github.io](https://github.com/ebartosh/ebartosh.github.io) and publishing the origin-root website. Commit `3a2cd80d1d3e2a6338f3ea46f9f63db972258fe7` adds four public files: `index.html`, `README.md`, `.nojekyll`, and `.well-known/assetlinks.json`. GitHub Pages publishes branch `main` from `/`, with HTTPS enforced. The [deployment](https://github.com/ebartosh/ebartosh.github.io/actions/runs/37805209833) completed successfully. The homepage identifies ebartosh's projects and links to Lifeboat's existing project page and source repository.
+
+Direct HTTP checks returned 200 without redirects for `https://ebartosh.github.io/`, `https://ebartosh.github.io/.well-known/assetlinks.json`, and `https://ebartosh.github.io/lifeboat/`. The root homepage and association response exactly match the published files, and the association is served as `application/json`. Google's Digital Asset Links statements API retrieved the `delegate_permission/common.handle_all_urls` statement for `app.lifeboat.mobile` with fingerprint `FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C`. Before publication, `apksigner verify --print-certs` verified that fingerprint against the APK installed on `RZCW4097DLF`.
+
+This closes the missing origin-root statement described in the October 7 experiment below. It establishes that the certificate association is publicly retrievable; wallet-side identity checks, native Android App Links verification and removal of Solflare/Jupiter warnings have not been verified. No wallet signing was requested during publication. Domain association does not guarantee that a wallet will trust the site. If a warning persists, request a false-positive review for the exact identity URI and host.
+
+Maintain root-host files in the new repository; the existing project-page preparation script still targets the separate `ebartosh/lifeboat` project site. The identity URI can remain `https://ebartosh.github.io/lifeboat/`: the root association applies to its host. Publication itself needs no APK rebuild. If restoring the URI from the current name-only configuration, restart Metro and connect freshly for a debug build; an installed standalone build needs an explicitly requested rebuild to change its embedded identity. The root file uses the current prototype test certificate and must be updated when the app signing certificate changes.
+
+## Website content updated on October 9, 2026
+
+The project page and root homepage now describe Lifeboat as an emergency Android client for critical actions when protocol websites or backends are unavailable, using direct chain reads, an RPC endpoint and an external wallet. The project page summarizes ORE mining and staking actions, Kamino repayment and collateral withdrawal including Multiply/eMode, Meteora withdrawal and recovery, transaction review, wallet requirements and links to current guides. Prototype status and the main operation limits remain explicit.
+
+The project-page update is commit `50389f38c8a45015f87eeec420cd039fd34c7997` on `ebartosh/lifeboat`'s `gh-pages` branch. The root homepage and repository README update is commit `f25bc66f292faf87dc350bc2a742bb0114cdf583` on `ebartosh/ebartosh.github.io`'s `main` branch. Both updates preserve the existing certificate association files. Six browser layout checks passed for both pages at 360 px with 1x/2x text and at 960 px, including horizontal overflow and readable link labels; screenshots were inspected. Source for the project page remains [index.html](index.html), while the root homepage is maintained in its separate repository.
+
+Both Pages deployments completed successfully. Direct HTTP checks returned 200 without redirects and verified the exact updated HTML on both sites. Both association URLs still return JSON with the expected package and certificate, and all five documentation links target existing public files. This content update does not establish new wallet compatibility results.
+
 ## Selected GitHub Pages target
 
 On October 7, 2026, the user chose the existing `ebartosh/lifeboat` repository and `https://ebartosh.github.io/lifeboat/`. The site was published to a new isolated `gh-pages` branch, commit `ad1f5a4eb329c7d727e2ad47a592fb2d4d7e6908`. GitHub Pages reports a built deployment with source `gh-pages` and folder `/`. The earlier registered `lifeboat-solana` organization is not used for this experiment. No application worktree changes were committed or pushed.
@@ -28,7 +46,7 @@ References: [GitHub Pages site naming](https://docs.github.com/en/pages/getting-
 
 The prepared [assetlinks.json](assetlinks.json) binds `app.lifeboat.mobile` to the signing certificate of the currently installed test release. The public SHA-256 certificate fingerprint was extracted with the verified JDK and Android `apksigner`, not from an authorization token. This is the existing test signing key; replace the statement with the correct signing certificate when changing signing configuration.
 
-[index.html](index.html) is the English project page published at `https://ebartosh.github.io/lifeboat/`. It contains no wallet state, authorization tokens, private keys, or RPC credentials. Fully verified domain association still requires `/.well-known/assetlinks.json` at the origin root, regardless of this documentation folder's source filename. The current certificate is a prototype test certificate; this page is for the identity experiment, not a production trust claim.
+[index.html](index.html) is the English project page published at `https://ebartosh.github.io/lifeboat/`. It contains no wallet state, authorization tokens, private keys, or RPC credentials. The origin-root `/.well-known/assetlinks.json` is published from the separate root-site repository described above. Wallet-side verification and acceptance still need device testing. The current certificate is a prototype test certificate; domain association is not a production trust claim.
 
 To run the experiment:
 

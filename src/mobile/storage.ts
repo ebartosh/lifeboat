@@ -1,6 +1,6 @@
 import { SolanaRpcClient } from '../core/rpc';
 
-export type LocalFile = 'external-wallet.json' | 'rpc.txt' | 'pending.json' | 'meteora-operation.json';
+export type LocalFile = 'external-wallet.json' | 'rpc.txt' | 'pending.json' | 'meteora-operation.json' | 'orca-operation.json';
 export interface PrivateFiles {
   read(name: LocalFile): Promise<string | null>;
   write(name: LocalFile, contents: string): Promise<void>;

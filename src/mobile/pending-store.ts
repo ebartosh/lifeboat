@@ -3,13 +3,17 @@ import type { PendingTransactionIdentity } from '../core/transaction';
 import type { OreAction } from '../operations/ore';
 import type { PrivateFiles } from './storage';
 import type { MeteoraOperation } from '../operations/meteora';
-import type { WithdrawalStep } from '../protocols/meteora/withdraw';
+import { actionId, stepId, type WithdrawalAction, type WithdrawalStep } from '../protocols/meteora/withdraw';
+import type { OrcaOperation } from '../operations/orca';
+import { actionId as orcaActionId, stepId as orcaStepId, type WithdrawalAction as OrcaAction,
+  type WithdrawalStep as OrcaStep } from '../protocols/orca/withdraw';
 
 export type PendingClaim = PendingTransactionIdentity & {
   version: 1;
-  action: OreAction | 'unstake' | 'kamino-repay' | 'kamino-withdraw' | 'meteora-withdraw-all';
+  action: OreAction | 'unstake' | 'claim-stake-rewards' | 'kamino-repay' | 'kamino-withdraw' | 'meteora-withdraw-all' | 'orca-withdraw-all'
+    | 'meteora-damm-withdraw-all';
   operationId?: string;
-  step?: WithdrawalStep;
+  step?: WithdrawalStep | OrcaStep;
   position?: string;
   reserve?: string;
   token?: string;
@@ -24,17 +28,42 @@ export interface PendingStore {
   loadMeteora?(): Promise<MeteoraOperation | null>;
   saveMeteora?(operation: MeteoraOperation): Promise<void>;
   clearMeteora?(): Promise<void>;
+  loadOrca?(): Promise<OrcaOperation | null>;
+  saveOrca?(operation: OrcaOperation): Promise<void>;
+  clearOrca?(): Promise<void>;
 }
 
+function validateMeteoraAction(value: unknown): WithdrawalAction {
+  const action = value as WithdrawalAction;
+  if (!action || !['remove','fees','reward','close'].includes(action.kind) || !Number.isInteger(action.lower) || !Number.isInteger(action.upper)
+    || action.lower < -2147483648 || action.upper > 2147483647 || action.lower > action.upper || action.upper-action.lower >= 70
+    || (action.kind === 'reward' && action.rewardIndex !== 0 && action.rewardIndex !== 1)
+    || (action.kind !== 'reward' && action.rewardIndex !== undefined)
+    || action.id !== actionId(action.kind,action.lower,action.upper,action.rewardIndex)
+    || (action.kind === 'close' && (action.lower !== 0 || action.upper !== 0))) throw new Error('Invalid Meteora step');
+  return {id:action.id,kind:action.kind,lower:action.lower,upper:action.upper,...(action.rewardIndex === undefined ? {} : {rewardIndex:action.rewardIndex})};
+}
+/** Records saved before multi-action steps hold a single action in place of the step. */
 export function validateMeteoraStep(value: unknown): WithdrawalStep {
-  const step = value as WithdrawalStep;
-  if (!step || !['remove','fees','reward','close'].includes(step.kind) || !Number.isInteger(step.lower) || !Number.isInteger(step.upper)
-    || step.lower < -2147483648 || step.upper > 2147483647 || step.lower > step.upper || step.upper-step.lower >= 70
-    || (step.kind === 'reward' && step.rewardIndex !== 0 && step.rewardIndex !== 1)
-    || (step.kind !== 'reward' && step.rewardIndex !== undefined)
-    || step.id !== (step.kind === 'close' ? 'close' : `${step.kind}:${step.lower}:${step.upper}${step.rewardIndex === undefined ? '' : ':'+step.rewardIndex}`)
-    || (step.kind === 'close' && (step.lower !== 0 || step.upper !== 0))) throw new Error('Invalid Meteora step');
-  return {id:step.id,kind:step.kind,lower:step.lower,upper:step.upper,...(step.rewardIndex === undefined ? {} : {rewardIndex:step.rewardIndex})};
+  const step = value as { id?: unknown; actions?: unknown };
+  const actions = step && Array.isArray(step.actions) ? step.actions.map(validateMeteoraAction) : [validateMeteoraAction(value)];
+  if (!actions.length || actions.length > 100 || new Set(actions.map(a => a.id)).size !== actions.length
+    || actions.slice(0,-1).some(a => a.kind === 'close') || step.id !== stepId(actions)) throw new Error('Invalid Meteora step');
+  return {id:stepId(actions),actions};
+}
+function validateOrcaAction(value: unknown): OrcaAction {
+  const action = value as OrcaAction;
+  if (!action || !['remove','fees','reward','close'].includes(action.kind)
+    || (action.kind === 'reward' ? ![0,1,2].includes(action.rewardIndex!) : action.rewardIndex !== undefined)
+    || action.id !== orcaActionId(action.kind,action.rewardIndex)) throw new Error('Invalid Orca step');
+  return {id:action.id,kind:action.kind,...(action.rewardIndex === undefined ? {} : {rewardIndex:action.rewardIndex})};
+}
+export function validateOrcaStep(value: unknown): OrcaStep {
+  const step = value as { id?: unknown; actions?: unknown };
+  const actions = step && Array.isArray(step.actions) ? step.actions.map(validateOrcaAction) : [];
+  if (!actions.length || actions.length > 6 || new Set(actions.map(a => a.id)).size !== actions.length
+    || actions.slice(0,-1).some(a => a.kind === 'close') || step.id !== orcaStepId(actions)) throw new Error('Invalid Orca step');
+  return {id:orcaStepId(actions),actions};
 }
 function validUrl(url: unknown): url is string {
   return typeof url === 'string' && ['http:','https:'].includes(new URL(url).protocol);
@@ -47,13 +76,15 @@ export function createPendingStore(files: PrivateFiles): PendingStore {
       if (contents === null) return null;
       try {
         const value = JSON.parse(contents);
-        if (value.version !== 1 || !['claim-sol', 'claim-ore', 'unstake', 'kamino-repay', 'kamino-withdraw', 'meteora-withdraw-all'].includes(value.action)
+        if (value.version !== 1 || !['claim-sol', 'claim-ore', 'unstake', 'claim-stake-rewards', 'kamino-repay', 'kamino-withdraw', 'meteora-withdraw-all', 'orca-withdraw-all',
+          'meteora-damm-withdraw-all'].includes(value.action)
           || typeof value.rpcUrl !== 'string' || !['https:', 'http:'].includes(new URL(value.rpcUrl).protocol)
           || typeof value.lastValidBlockHeight !== 'string' || !/^\d+$/.test(value.lastValidBlockHeight)
           || !Number.isSafeInteger(value.createdAt) || value.createdAt < 0
           || (value.action.startsWith('kamino-') && (typeof value.position !== 'string' ||
             typeof value.token !== 'string' || value.token.length === 0 || typeof value.reserve !== 'string'))
-          || (value.action === 'meteora-withdraw-all' && (typeof value.position !== 'string' || typeof value.operationId !== 'string' || !value.operationId))) throw new Error();
+          || (value.action === 'meteora-damm-withdraw-all' && typeof value.position !== 'string')
+          || (['meteora-withdraw-all', 'orca-withdraw-all'].includes(value.action) && (typeof value.position !== 'string' || typeof value.operationId !== 'string' || !value.operationId))) throw new Error();
         return { version: 1, action: value.action, wallet: address(value.wallet),
           signature: signature(value.signature), blockhash: blockhash(value.blockhash),
           lastValidBlockHeight: BigInt(value.lastValidBlockHeight), rpcUrl: value.rpcUrl, createdAt: value.createdAt,
@@ -61,6 +92,7 @@ export function createPendingStore(files: PrivateFiles): PendingStore {
           ...(typeof value.reserve === 'string' ? { reserve: address(value.reserve) } : {}),
           ...(typeof value.token === 'string' ? { token: value.token } : {}),
           ...(value.action === 'meteora-withdraw-all' ? {operationId:value.operationId,step:validateMeteoraStep(value.step)} : {}),
+          ...(value.action === 'orca-withdraw-all' ? {operationId:value.operationId,step:validateOrcaStep(value.step)} : {}),
         };
       } catch { throw new Error('Pending transaction record is invalid'); }
     },
@@ -93,5 +125,26 @@ export function createPendingStore(files: PrivateFiles): PendingStore {
       if (await files.read('meteora-operation.json') !== contents) throw new Error('Meteora operation was not persisted');
     },
     async clearMeteora() { await files.remove('meteora-operation.json'); },
+    async loadOrca() {
+      const contents = await files.read('orca-operation.json');
+      if (contents === null) return null;
+      try {
+        const value = JSON.parse(contents);
+        if (value.version !== 1 || value.protocol !== 'orca' || typeof value.id !== 'string' || !value.id || !validUrl(value.rpcUrl)
+          || !Number.isSafeInteger(value.createdAt) || value.createdAt < 0 || !Array.isArray(value.completed) || value.completed.length > 20) throw new Error();
+        const completed: OrcaOperation['completed'] = value.completed.map((c: {step:unknown;signature:string;slot?:string}) => {
+          if (c.slot !== undefined && (typeof c.slot !== 'string' || !/^\d+$/.test(c.slot))) throw new Error();
+          return {step:validateOrcaStep(c.step),signature:signature(c.signature),...(c.slot === undefined ? {} : {slot:c.slot})};
+        });
+        return { version:1,protocol:'orca',id:value.id,wallet:address(value.wallet),position:address(value.position),rpcUrl:value.rpcUrl,
+          createdAt:value.createdAt,completed,...(value.currentStep ? {currentStep:validateOrcaStep(value.currentStep)} : {}) };
+      } catch { throw new Error('Orca operation record is invalid'); }
+    },
+    async saveOrca(operation) {
+      const contents = JSON.stringify(operation);
+      await files.write('orca-operation.json',contents);
+      if (await files.read('orca-operation.json') !== contents) throw new Error('Orca operation was not persisted');
+    },
+    async clearOrca() { await files.remove('orca-operation.json'); },
   };
 }

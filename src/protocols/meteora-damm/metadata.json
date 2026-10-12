@@ -1,0 +1,16 @@
+{
+  "programId": "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",
+  "idlVersion": "0.2.5",
+  "idlSource": "MeteoraAg/damm-v2-sdk src/idl/cp_amm.json (npm @meteora-ag/cp-amm-sdk 1.5.1)",
+  "idlSha256": "7f5e5f5e9cab57cd208575dc53359676550e41ee0c19fc822560fe1062fd3ac5",
+  "idlLicense": "MIT",
+  "sdkVersion": "1.5.1",
+  "sdkRepository": "https://github.com/MeteoraAg/damm-v2-sdk",
+  "sdkCommit": "79ebbfe59a225e641a2f37cd03404f26de1b0c8e",
+  "sourceRepository": "https://github.com/MeteoraAg/damm-v2",
+  "sourceCommit": "a85c926607433f23f0ea60f4ca7b1ae92f4156cb",
+  "sourceRelease": "cp_amm 0.2.4",
+  "sourceLicense": "Meteora Noncommercial Licence; read for verification only, no code copied",
+  "network": "mainnet-beta",
+  "tokenInterface": "../../core/token-interface.json"
+}

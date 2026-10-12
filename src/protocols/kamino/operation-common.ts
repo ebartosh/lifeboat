@@ -10,12 +10,15 @@ import { KaminoAdapter, type Position } from "./adapter";
 import { FARMS, ZERO, check, decode } from "./accounts";
 import type { NativeSolEstimate, NativeSolRpc } from "./native-sol";
 import type { LendingMarket, Obligation, Reserve } from "./state";
+import type { PositionRisk } from "./math";
 
 export type KaminoRpc = LendingReader & TransactionRpc & NativeSolRpc;
 export type OperationPlan = {
   instructions: readonly Instruction[]; simulationAccounts: readonly Address[];
   estimate: bigint; token: string; decimals: number; reserve: Address; recipient: Address; createsAta: boolean;
   collateralAmount?: bigint;
+  // Kamino's risk values at the refresh preview's slot, before this operation.
+  risk?: PositionRisk | null;
   nativeSol?: NativeSolEstimate;
   additionalSigners?: readonly KeyPairSigner[];
   beforeSimulation?: (transaction: Transaction) => Promise<void>;
@@ -76,12 +79,16 @@ export async function operationFarms(adapter: KaminoAdapter, position: Position,
 export function validateSimulationSnapshot(adapter: KaminoAdapter, position: Position, simulationAccounts: readonly Address[], result: SimulationResult) {
   check(result.snapshot && result.snapshot.accounts.length === simulationAccounts.length && result.snapshot.slot >= position.slot,
     "RPC must return fresh final simulated position and token account");
-  adapter.validateMarket(decode<LendingMarket>(adapter.programInterface, "LendingMarket", result.snapshot.accounts[2], adapter.programAddress));
+  const market = decode<LendingMarket>(adapter.programInterface, "LendingMarket", result.snapshot.accounts[2], adapter.programAddress);
+  adapter.validateMarket(market);
+  const reserves = new Map<Address, { state: Reserve }>();
   for (const [index, key] of [...position.reserves.keys()].entries()) {
     const reserve = decode<Reserve>(adapter.programInterface, "Reserve", result.snapshot.accounts[index + 3], adapter.programAddress);
     adapter.validatePositionReserve(reserve, key, position.state, position.repayment);
     adapter.validateReserveDependencies(position, key, reserve);
+    reserves.set(key, { state: reserve });
   }
+  adapter.validateElevationGroup(position.state, market, reserves);
   return result.snapshot.accounts;
 }
 

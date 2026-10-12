@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { executeSafeTransaction } from '../src/core/transaction';
 import { checkTransactionSignatures } from '../src/core/signed-transaction';
 import { createOreAdapter } from '../src/protocols/ore-bundle';
-import { buildWithdraw, oreAta, stakePda } from '../src/protocols/ore-stake';
+import { buildClaim, buildWithdraw, oreAta, stakePda, type StakePosition } from '../src/protocols/ore-stake';
 import { prepareOperation } from '../src/protocols/kamino/operations';
 import { executeMeteoraWithRpc } from '../src/operations/meteora';
 import { fixture as kaminoFixture, POSITION as KAMINO_POSITION, WSOL } from './fixtures/kamino';
@@ -15,12 +15,14 @@ beforeEach(() => vi.spyOn(console, 'info').mockImplementation(() => undefined));
 afterEach(() => vi.restoreAllMocks());
 
 describe('actual operation messages with modeled Solflare additions', () => {
-  it.each(['Claim SOL', 'Claim ORE', 'Unstake ORE'])('preserves %s and verifies its wallet signature', async operation => {
+  it.each(['Claim SOL', 'Claim ORE', 'Unstake ORE', 'Claim staking rewards'])('preserves %s and verifies its wallet signature', async operation => {
     const signer = await createTestSigner(), ore = createOreAdapter();
+    const stake: StakePosition = { wallet: signer.address, stakeAddress: await stakePda(signer.address), balance: 100n, available: 100n,
+      rewardsFactor: 0n, rewards: 5n, lifetimeRewards: 5n, claimable: 5n,
+      stakeTokenAddress: await oreAta(await stakePda(signer.address)), recipient: await oreAta(signer.address), recipientExists: true };
     const instructions: Instruction[] = [operation === 'Claim SOL' ? await ore.buildClaimSolInstruction(signer.address)
       : operation === 'Claim ORE' ? await ore.buildClaimOreInstruction(signer.address)
-      : await buildWithdraw({ wallet: signer.address, stakeAddress: await stakePda(signer.address), balance: 100n, available: 100n,
-        stakeTokenAddress: await oreAta(await stakePda(signer.address)), recipient: await oreAta(signer.address), recipientExists: true }, 10n)];
+      : operation === 'Unstake ORE' ? await buildWithdraw(stake, 10n) : await buildClaim(stake)];
     const sent: Transaction[] = [];
     const result = await executeSafeTransaction({ wallet: signer.address, instructions,
       rpc: { getLatestBlockhash: async () => ({ blockhash: blockhash('11111111111111111111111111111111'), lastValidBlockHeight: 100n }),
@@ -46,7 +48,7 @@ describe('actual operation messages with modeled Solflare additions', () => {
     expect(await checkTransactionSignatures(sent[0], [f.wallet.address, ...(plan!.additionalSigners ?? []).map(s => s.address)])).toBeNull();
     if (action === 'repay-SOL') expect(plan!.additionalSigners).toHaveLength(1);
   });
-  it('runs Meteora remove, fee, reward and close steps with updated wallet messages and fresh simulation postconditions', async () => {
+  it('runs a packed Meteora remove, fee, reward and close step with updated wallet messages and fresh simulation postconditions', async () => {
     const f = await meteoraFixture({ width: 10, reward: true }); f.rpc.fee = 19000n; let approvals = 0;
     const result = await executeMeteoraWithRpc(f.rpc, { wallet: f.signer.address,
       signWithWallet: tx => signWithAdditions(tx, f.signer, 1_400_000n, 10_000n),
@@ -54,8 +56,8 @@ describe('actual operation messages with modeled Solflare additions', () => {
         rpcUrl: 'https://example.com', createdAt: 1, completed: [] },
       confirm: async () => { approvals++; return true; }, beforeSend: async () => undefined, confirmed: async () => undefined });
     expect(result.status).toBe('confirmed');
-    expect(result.operation.completed.map(item => item.step.kind)).toEqual(['remove', 'fees', 'reward', 'close']);
-    expect(approvals).toBe(8);
+    expect(result.operation.completed.map(item => item.step.actions.map(a => a.kind).join('+'))).toEqual(['remove+fees+reward+close']);
+    expect(approvals).toBe(2);
     for (const sent of f.rpc.sent) expect(await checkTransactionSignatures(sent, [f.signer.address])).toBeNull();
   });
 });

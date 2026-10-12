@@ -1,5 +1,5 @@
 import { AccountRole, address, getAddressEncoder, getProgramDerivedAddress, type Address, type Instruction } from '@solana/kit';
-import type { AccountReader } from '../core/accounts';
+import type { AccountReader, ChainAccount } from '../core/accounts';
 import { VerificationError } from '../core/errors';
 
 // ore-stake is a separate program from the ORE miner and ore-lst programs.
@@ -11,8 +11,19 @@ const SYSTEM_PROGRAM = address('11111111111111111111111111111111');
 const encoder = getAddressEncoder();
 const U64_MAX = (1n << 64n) - 1n;
 
-export type StakePosition = {
-  wallet: Address; stakeAddress: Address; balance: bigint; available: bigint;
+// steel accounts: an 8-byte discriminator (one tag byte, seven zero bytes) followed by the repr(C) struct.
+const STAKE_DISCRIMINATOR = 108;
+const TREASURY_DISCRIMINATOR = 104;
+const STAKE_SIZE = 8 + 112;
+const TREASURY_SIZE = 8 + 24;
+
+/** Recorded fields of one Stake account; `rewardsFactor` is the raw I80F48 bit pattern. */
+export type StakeAccount = { balance: bigint; rewardsFactor: bigint; rewards: bigint; lifetimeRewards: bigint };
+
+export type StakePosition = StakeAccount & {
+  wallet: Address; stakeAddress: Address; available: bigint;
+  /** Recorded plus accrued rewards; excludes ORE still vesting into the treasury, so never above the payout. */
+  claimable: bigint;
   stakeTokenAddress: Address; recipient: Address; recipientExists: boolean;
 };
 
@@ -35,6 +46,44 @@ function u64(data: Uint8Array, offset: number): bigint {
   return new DataView(data.buffer, data.byteOffset, data.byteLength).getBigUint64(offset, true);
 }
 
+function i128(data: Uint8Array, offset: number): bigint {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  return (view.getBigInt64(offset + 8, true) << 64n) | view.getBigUint64(offset, true);
+}
+
+function hasDiscriminator(data: Uint8Array, tag: number): boolean {
+  return data[0] === tag && data.subarray(1, 8).every(byte => byte === 0);
+}
+
+export function parseStakeAccount(account: ChainAccount, wallet: Address): StakeAccount {
+  if (account.owner !== STAKE_PROGRAM || account.executable || account.data.length !== STAKE_SIZE ||
+      !hasDiscriminator(account.data, STAKE_DISCRIMINATOR) ||
+      !encoder.encode(wallet).every((byte, i) => account.data[i + 8] === byte)) {
+    throw new VerificationError('Stake account has an unexpected owner, discriminator, layout or authority');
+  }
+  // Stake: authority 8, balance 40, compound fields and timestamps 48..88, rewards_factor 88, rewards 104, lifetime 112.
+  return { balance: u64(account.data, 40), rewardsFactor: i128(account.data, 88),
+    rewards: u64(account.data, 104), lifetimeRewards: u64(account.data, 112) };
+}
+
+function parseTreasuryFactor(account: ChainAccount | null): bigint {
+  if (!account || account.owner !== STAKE_PROGRAM || account.executable || account.data.length !== TREASURY_SIZE ||
+      !hasDiscriminator(account.data, TREASURY_DISCRIMINATOR)) {
+    throw new VerificationError('The ore-stake treasury is missing or has an unexpected layout');
+  }
+  return i128(account.data, 8);
+}
+
+/**
+ * Mirrors Stake::update_rewards without the vesting step: floor((treasury − stake factor) × balance).
+ * I80F48 × an integer is exact, so the only rounding is the program's own floor.
+ */
+export function estimateClaimable(stake: StakeAccount, treasuryFactor: bigint): bigint {
+  const accrued = treasuryFactor > stake.rewardsFactor
+    ? ((treasuryFactor - stake.rewardsFactor) * stake.balance) >> 48n : 0n;
+  return stake.rewards + accrued;
+}
+
 export function parseOreAmount(input: string): bigint {
   const match = /^(?:0|[1-9]\d*)(?:\.(\d{1,11}))?$/.exec(input.trim());
   if (!match) throw new VerificationError('Enter an ORE amount with up to 11 decimal places');
@@ -50,14 +99,11 @@ export async function readStakePosition(reader: AccountReader, wallet: Address):
     stakePda(wallet), oreAta(wallet), reader.getAccount(STAKE_PROGRAM),
   ]);
   if (!program?.executable) throw new VerificationError('The ore-stake program is missing on the selected network');
-  const [stake, stakeTokenAddress] = await Promise.all([reader.getAccount(stakeAddress), oreAta(stakeAddress)]);
-  if (!stake) return null;
-  // steel account!(OreAccount, Stake): one-byte discriminator 108 followed by repr(C) Stake (112 bytes).
-  if (stake.owner !== STAKE_PROGRAM || stake.executable || stake.data.length !== 113 || stake.data[0] !== 108 ||
-      !encoder.encode(wallet).every((byte, i) => stake.data[i + 1] === byte)) {
-    throw new VerificationError('Stake account has an unexpected owner, discriminator, layout or authority');
-  }
-  const balance = u64(stake.data, 33);
+  const [account, stakeTokenAddress] = await Promise.all([reader.getAccount(stakeAddress), oreAta(stakeAddress)]);
+  if (!account) return null;
+  const stake = parseStakeAccount(account, wallet);
+  const { balance } = stake;
+  const treasuryFactor = parseTreasuryFactor(await reader.getAccount(await singleton('treasury')));
   const reserve = await reader.getAccount(stakeTokenAddress);
   if (!reserve || reserve.owner !== TOKEN_PROGRAM || reserve.data.length !== 165 ||
       !encoder.encode(ORE_MINT).every((byte, i) => reserve.data[i] === byte) ||
@@ -72,8 +118,8 @@ export async function readStakePosition(reader: AccountReader, wallet: Address):
       !encoder.encode(wallet).every((byte, i) => recipientAccount.data[i + 32] === byte))) {
     throw new VerificationError('Recipient ORE token account is invalid');
   }
-  return { wallet, stakeAddress, balance, available: balance, stakeTokenAddress,
-    recipient, recipientExists: !!recipientAccount };
+  return { ...stake, wallet, stakeAddress, available: balance, claimable: estimateClaimable(stake, treasuryFactor),
+    stakeTokenAddress, recipient, recipientExists: !!recipientAccount };
 }
 
 export async function buildWithdraw(position: StakePosition, amount: bigint): Promise<Instruction> {
@@ -90,6 +136,30 @@ export async function buildWithdraw(position: StakePosition, amount: bigint): Pr
     { address: position.stakeAddress, role: AccountRole.WRITABLE },
     { address: position.stakeTokenAddress, role: AccountRole.WRITABLE },
     { address: await singleton('treasury'), role: AccountRole.WRITABLE },
+    { address: await singleton('vesting'), role: AccountRole.WRITABLE },
+    { address: SYSTEM_PROGRAM, role: AccountRole.READONLY },
+    { address: TOKEN_PROGRAM, role: AccountRole.READONLY },
+    { address: ASSOCIATED_TOKEN_PROGRAM, role: AccountRole.READONLY },
+    { address: STAKE_PROGRAM, role: AccountRole.READONLY },
+  ] };
+}
+
+/**
+ * Claim = 12 with amount u64::MAX: the program pays min(amount, rewards), i.e. everything accrued when it
+ * executes. Only the signer can lower its own rewards, so the payout is never below the simulated one.
+ */
+export async function buildClaim(position: StakePosition): Promise<Instruction> {
+  const treasury = await singleton('treasury');
+  const data = new Uint8Array(9);
+  data[0] = 12;
+  new DataView(data.buffer).setBigUint64(1, U64_MAX, true);
+  return { programAddress: STAKE_PROGRAM, data, accounts: [
+    { address: position.wallet, role: AccountRole.WRITABLE_SIGNER },
+    { address: ORE_MINT, role: AccountRole.READONLY },
+    { address: position.recipient, role: AccountRole.WRITABLE },
+    { address: position.stakeAddress, role: AccountRole.WRITABLE },
+    { address: treasury, role: AccountRole.WRITABLE },
+    { address: await oreAta(treasury), role: AccountRole.WRITABLE },
     { address: await singleton('vesting'), role: AccountRole.WRITABLE },
     { address: SYSTEM_PROGRAM, role: AccountRole.READONLY },
     { address: TOKEN_PROGRAM, role: AccountRole.READONLY },

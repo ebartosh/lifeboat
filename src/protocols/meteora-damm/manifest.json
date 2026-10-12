@@ -1,0 +1,15 @@
+{
+  "id": "meteora-damm-v2",
+  "name": "Meteora DAMM v2",
+  "network": "mainnet-beta",
+  "actions": [{ "id": "withdraw-all", "label": "Withdraw all", "description": "Claim fees, remove all unlocked liquidity, claim rewards, and close the position and burn its NFT when nothing remains locked." }],
+  "supported": "Position NFTs (Token-2022) held by the connected wallet in any token account; unlocked, vesting and permanently locked positions; pool and reward tokens on SPL Token or Token-2022 without an active transfer hook; WSOL stays wrapped",
+  "token2022": {
+    "extensionAllowlist": false,
+    "rejected": ["active transfer hooks"],
+    "receipt": "measured by simulation on the wallet's own accounts; withheld transfer fees are reported separately"
+  },
+  "liquidityMinimums": "token_a_amount_threshold and token_b_amount_threshold are 0; see docs/meteora-damm-operations.md",
+  "frozenRewardVault": "claim_reward with skip_reward = 1 forfeits that reward so the principal can be withdrawn; stated in the review",
+  "excluded": ["active transfer hooks", "pools before their activation point", "partial withdrawals", "fee-only actions", "swaps", "wallet-wide withdrawal", "DAMM v1"]
+}

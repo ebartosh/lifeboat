@@ -8,11 +8,13 @@ export let lastCommand: RefObject<View | null> | null = null;
 export const DialogCommandContext = createContext(false);
 type Variant = 'primary' | 'secondary' | 'quiet' | 'danger';
 /** Far-style command label: the underlined first letter marks an interactive element. */
-export function HotkeyLabel({ title, style, filled = false, disabled = false }: {
-  title: string; style?: StyleProp<TextStyle>; filled?: boolean; disabled?: boolean;
+/** `at` picks the marked letter; the first by default. */
+export function HotkeyLabel({ title, style, filled = false, disabled = false, at = 0 }: {
+  title: string; style?: StyleProp<TextStyle>; filled?: boolean; disabled?: boolean; at?: number;
 }) {
   if (disabled || !title) return <Text style={style}>{title}</Text>;
-  return <Text style={style}><Text style={[styles.hotkey, !filled && { color: colors.hotkey }]}>{title[0]}</Text>{title.slice(1)}</Text>;
+  return <Text style={style}>{title.slice(0, at)}<Text style={[styles.hotkey, !filled && { color: colors.hotkey }]}>{title[at]}</Text>
+    {title.slice(at + 1)}</Text>;
 }
 /**
  * Far-style bracketed command: `[ Title ]`. The label sits on a band inside a 48 dp touch target; the band is orange
