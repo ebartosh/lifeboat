@@ -64,7 +64,7 @@ On October 8, 2026, debug arm64-v8a was built here and installed on a Samsung Ga
 
 Corepack's cached pnpm 12.6.0 is incomplete on this machine (`pnpm.cjs` missing), so `corepack pnpm …` fails. Run installed entry points with Node instead, for example `node node_modules/expo/bin/cli prebuild --platform android --no-clean`.
 
-Both machines sign with the Expo template's `android/app/debug.keystore` (SHA-256 `FA:C6:17:45:…:91:03:3B:9C`) for debug and release, so `adb install -r` updates an app installed from the other machine and keeps its data. The phone does not need USB file-transfer mode; USB debugging works in any USB mode once the computer is authorized.
+Both machines sign debug builds with the Expo template's `android/app/debug.keystore` (SHA-256 `FA:C6:17:45:…:91:03:3B:9C`), so `adb install -r` updates an app installed from the other machine and keeps its data. The phone does not need USB file-transfer mode; USB debugging works in any USB mode once the computer is authorized.
 
 ## Running on the emulator
 
@@ -319,7 +319,22 @@ The Solflare compatibility update is TS/JS only and requires no native prebuild 
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 -Release -Architecture all
 ```
 
-APK: `android/app/build/outputs/apk/release/app-release.apk`. `all` includes x86_64 and arm64-v8a; a physical Android device usually needs `-Architecture arm64-v8a`. Release includes JS/Hermes and local ORE/Kamino IDL and metadata, and does not need Metro. The current Expo template signs release with a test debug key: this build is for prototype testing; publication requires separate signing configuration.
+APK: `android/app/build/outputs/apk/release/app-release.apk`. `all` includes x86_64 and arm64-v8a; a physical Android device usually needs `-Architecture arm64-v8a`. Release includes JS/Hermes and local ORE/Kamino IDL and metadata, and does not need Metro.
+
+### Release signing
+
+Published APKs are signed with the private Lifeboat release key, not the template's public debug key. [`plugins/with-release-signing.js`](../plugins/with-release-signing.js) adds the release signing config to the generated `android/app/build.gradle` during prebuild. It takes effect only when these Gradle properties are set, normally in `%USERPROFILE%\.gradle\gradle.properties`:
+
+```properties
+LIFEBOAT_RELEASE_STORE_FILE=C:/Users/<user>/.android-keys/lifeboat-release.jks
+LIFEBOAT_RELEASE_STORE_PASSWORD=...
+LIFEBOAT_RELEASE_KEY_ALIAS=lifeboat
+LIFEBOAT_RELEASE_KEY_PASSWORD=...
+```
+
+Without them, release falls back to the debug key, which is acceptable only for local testing. The keystore and passwords never go in the repository. Losing the keystore means published installs can never receive an in-place update. Keep an offline backup of the keystore and its password.
+
+The key was created on October 12, 2026: PKCS12, RSA 4096, alias `lifeboat`, `CN=Lifeboat, OU=ebartosh`, valid until 2126. Certificate SHA-256: `10:E5:42:F3:C0:69:0A:FB:29:09:ED:AD:5D:33:A5:F4:19:E6:5C:C3:F9:3A:F6:41:DF:AB:52:BE:76:B9:D9:B2`. Android refuses to update an app signed with a different key. A phone running a debug-key build must uninstall it first, which deletes Lifeboat's app data. Before uninstalling, check that no operation is pending. Before publishing, confirm the signer with `apksigner verify --print-certs`.
 
 On October 5, 2026, an explicitly requested ARM64 release with wallet/transaction diagnostics built successfully in 4m 54s using existing Gradle caches. APK v2 signature verification passed. `adb install -r` updated the Samsung SM-A546B on Android 16 and retained application data. Installation initially waited for Google Play verification while the phone was locked; it completed after the user confirmed Play Protect. If a committed installation remains pending, inspect the phone for that prompt before retrying installation. Lifeboat's launch was verified; this does not establish successful transaction signing or confirmation.
 
