@@ -15,6 +15,13 @@ Lifeboat currently supports ORE, Kamino Lending positions and Meteora DLMM and D
 
 You need Android 7 or later and a compatible external wallet. No RPC API key is required for the current build. Lifeboat cannot import private keys or sign with a stored wallet key. Legacy key files from older versions remain untouched and unused; see [Wallets and RPC](docs/wallet-and-rpc.md) for storage details. This is a prototype build, so review the address, amount, and simulation result before each transaction.
 
+## Wallet compatibility
+
+Lifeboat signs through Mobile Wallet Adapter.
+
+- **Works:** Jupiter Wallet.
+- **Not yet supported:** Phantom. Phantom refuses to sign for this build, which identifies itself to wallets by name only. In testing, Phantom signed when Lifeboat also sent a website address, but this build doesn't send one. Use another wallet for now.
+
 ## Documentation
 
 Start with the [documentation index](docs/README.md) for current guides, verification records, and historical migration plans.

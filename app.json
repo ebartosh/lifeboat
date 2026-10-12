@@ -15,6 +15,6 @@
         "backgroundColor": "#FFFFFF"
       }
     },
-    "plugins": ["expo-dev-client"]
+    "plugins": ["expo-dev-client", "./plugins/with-release-signing"]
   }
 }
