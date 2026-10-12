@@ -1,11 +1,12 @@
-import { address } from '@solana/kit';
+import { address, type Address } from '@solana/kit';
 import { describe, expect, it, vi } from 'vitest';
 import type { ChainAccount } from '../src/core/accounts';
-import { associatedTokenAddress, createAssociatedTokenIdempotent, decodeTokenAccount, decodeTokenMint,
+import { associatedTokenAddress, createAssociatedTokenIdempotent, decodeTokenAccount, decodeTokenMint, metaplexMetadataAddress, onChainSymbol, TOKEN_METADATA_PROGRAM,
   TOKEN_2022_PROGRAM, TOKEN_PROGRAM, NATIVE_TOKEN_2022_MINT, tokenAccountRent, tokenAccountSize, transferAmounts } from '../src/core/tokens';
 import { validateWithdrawalMint, withdrawalTokenState } from '../src/protocols/meteora/token-policy';
 import { extendedBytes, feeConfigBytes, metadataBytes } from './fixtures/tokens';
 import { tokenBytes, USDC, u64, pubkey } from './fixtures/meteora';
+import { tokenSymbol } from '../src/core/format';
 const owner=address('11111111111111111111111111111112');
 const account=(data:Uint8Array,program=TOKEN_2022_PROGRAM):ChainAccount=>({owner:program,executable:false,data});
 const mintBase=()=>{const d=new Uint8Array(82);d[44]=6;d[45]=1;return d;};
@@ -115,5 +116,38 @@ describe('shared token infrastructure',()=>{
     expect(transferAmounts(5n,full,0n).netAmount).toBe(0n);expect(transferAmounts(20n,full,0n).netAmount).toBe(10n);
     expect(transferAmounts(2n,null,0n).netAmount).toBe(2n);
     for(const amount of [-1n,1n<<64n])expect(()=>transferAmounts(amount,config,0n)).toThrow(/u64/);
+  });
+});
+const MET=address('METvsvVRapdj9cFLzq4Tr43xK4tAjQfwX76z3n6mWQL');
+// Metaplex MetadataV1 pads name to 32 bytes and symbol to 10 bytes with NUL.
+const metaplex=(mint:Address=MET,symbol='MET',key=4,owner:Address=TOKEN_METADATA_PROGRAM):ChainAccount=>{
+  const field=(text:string,size:number)=>{const b=new Uint8Array(4+size);new DataView(b.buffer).setUint32(0,size,true);b.set(Buffer.from(text,'utf8').subarray(0,size),4);return b;};
+  const head=new Uint8Array(65);head[0]=key;pubkey(head,33,mint);
+  return {owner,executable:false,data:Uint8Array.from([...head,...field('Meteora',32),...field(symbol,10),...field('',200)])};
+};
+describe('on-chain token symbols',()=>{
+  const classic=decodeTokenMint(MET,{...account(mintBase()),owner:TOKEN_PROGRAM});
+  it('derives the mainnet Metaplex metadata PDA',async()=>{
+    expect(await metaplexMetadataAddress(MET)).toBe('7rdxkmahGZjAhmKxAaZqbC416Hv6TXzxb6JBNhhkKyV5');
+  });
+  it('reads the padded Metaplex symbol and the Token-2022 TokenMetadata symbol',()=>{
+    expect(onChainSymbol(classic,metaplex())).toBe('MET');
+    const extended=decodeTokenMint(USDC,account(extendedBytes(mintBase(),1,[[19,metadataBytes(USDC)]])));
+    expect(onChainSymbol(extended,null)).toBe('FIX');
+    expect(onChainSymbol(extended,metaplex(USDC,'OTHER'))).toBe('FIX');
+  });
+  it.each(['owner','key','mint','truncated','empty','hidden','utf8'])('ignores %s metadata without throwing',kind=>{
+    let a=metaplex();
+    if(kind==='owner')a=metaplex(MET,'MET',4,TOKEN_PROGRAM);if(kind==='key')a=metaplex(MET,'MET',6);
+    if(kind==='mint')a=metaplex(USDC);if(kind==='truncated')a={...a,data:a.data.slice(0,80)};
+    if(kind==='empty')a=metaplex(MET,'   ');if(kind==='hidden')a=metaplex(MET,'M'+String.fromCharCode(0x202e)+'ET');
+    if(kind==='utf8'){a=metaplex();a.data[65+4+32+4]=0xff;}
+    expect(onChainSymbol(classic,a)).toBeNull();
+    expect(onChainSymbol(classic,undefined)).toBeNull();
+  });
+  it('keeps fixed labels for known mints and rejects imitations',()=>{
+    expect(tokenSymbol(MET,'MET')).toBe('MET');
+    expect(tokenSymbol(USDC,'FAKE')).toBe('USDC');
+    for(const fake of ['USDC','wsol','SOL',null])expect(tokenSymbol(MET,fake)).toBe('METv…mWQL');
   });
 });

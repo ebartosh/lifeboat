@@ -45,3 +45,25 @@ The new Token-2022 liquidity/fee/reward payouts are verified with fixtures and i
 Read-only candidate discovery on October 7 found a PermissionlessV2 PDA reconstruction bug: `base_key` is the stored preset parameter address, whereas the previous check incorrectly derived a preset from the bin step. The branch was corrected against the pinned SDK. TypeScript, 67 existing focused Meteora tests, 6 captured-pool regressions and the expanded 14-scenario official SDK comparison passed. No interface or native code changed and no APK was rebuilt.
 
 The public pool/mint/reserve captures in `tests/fixtures/meteora/token2022-pools.json` validate SOL/USDC as an SPL control, Agency/SOL with metadata-only Token-2022, SI/SOL and CHONK/SOL with a 1% transfer-fee rate, and MASK/SOL with 3%, at epoch 1051 and slots 454097110–454097114. Fee caps and current schedules are decoded from the mint. These are technical compatibility examples; individual PositionV2 eligibility and unsigned payout simulation still require a position read. No configured rewards were present in these example pools, so they do not test the reward payout path.
+
+## Packed withdrawal transactions — October 9, 2026
+
+Withdraw all now packs consecutive remove, fee, reward and close instructions into as few transactions as the packet and compute budgets allow ([operations](meteora-operations.md#review-and-signing)). Fixture counts:
+
+| Position | Before | Now |
+| --- | --- | --- |
+| Up to 70 bins, with or without one reward | 3–5 | 1 |
+| 142 bins, one reward | 10 | 2 |
+| 1400 bins, no reward | 41 | 10 |
+| 1400 bins, one reward, missing ATAs | 61 | 13 |
+
+| Check | Result |
+| --- | --- |
+| TypeScript | Passed |
+| Full Vitest suite | 400 passed; 1 failed: the IDL hash pin, which also failed in the earlier baseline (`.cache/baseline-test.txt`) and is unrelated to this change |
+| Packing, saved-record and close-safety cases | 1400-bin positions within the 1,100-byte budget; one-range positions in one transaction; fee claims in every range holding liquidity; progress records from the previous single-action format load as one-action steps |
+| Browser interface checks | 90 layout/visual cases plus interactions passed; the review lists each action of the step |
+| Official DLMM 1.9.14 differential | 14 scenarios passed; every instruction of each packed first transaction (up to 7: remove, claim fee, claim reward and close) matched the SDK's bytes and account roles; no network calls |
+| Unsigned mainnet simulation | SI/SOL and CHONK/SOL, Token-2022 with a 1% transfer fee: six live positions passed. Two full ranges of remove and fee claim: 717,547 CU, 954 bytes. Two full ranges, 8 bins and close: 866,409 CU, 1009 bytes. One full range and close: 427,649 CU, 867 bytes. Receipts showed the 1% fee withheld per transfer. An earlier run with flat estimates packed three full ranges at 1,067,861 CU; the per-bin estimate now stops at two |
+
+These simulations are the first live Token-2022 transfer-fee payouts in this record. Neither pool had a configured reward, so reward claims and their compute cost remain fixture-only; the reward estimate is set above the fee-claim estimate. Wallet compatibility with packets near 1,100 bytes is untested on a device. No transaction was signed or submitted, and no APK was rebuilt.

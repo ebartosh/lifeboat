@@ -32,7 +32,7 @@ describe("pinned KLend account interface", () => {
     ["wrong account owner", (f: Awaited<ReturnType<typeof fixture>>) => { f.rpc.accounts.get(POSITION)!.owner = ZERO; }, /owner/],
     ["wrong wallet", (f: Awaited<ReturnType<typeof fixture>>) => { pubkey(f.obligation, 64, ZERO); }, /owner/],
     ["wrong market", (f: Awaited<ReturnType<typeof fixture>>) => { pubkey(f.obligation, 32, ZERO); }, /market/],
-    ["unsupported tag", (f: Awaited<ReturnType<typeof fixture>>) => { u64(f.obligation, 8, 1n); }, /vanilla/],
+    ["unsupported tag", (f: Awaited<ReturnType<typeof fixture>>) => { u64(f.obligation, 8, 2n); }, /vanilla/],
     ["elevation group", (f: Awaited<ReturnType<typeof fixture>>) => { f.obligation[2285] = 1; }, /elevation/],
     ["wrong reserve link", (f: Awaited<ReturnType<typeof fixture>>) => { pubkey(f.rpc.accounts.get(USDC)!.data, 32, ZERO); }, /market/],
     ["wrong mint", (f: Awaited<ReturnType<typeof fixture>>) => { pubkey(f.rpc.accounts.get(USDC)!.data, 128, ZERO); }, /mint/],

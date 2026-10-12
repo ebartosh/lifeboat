@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { kaminoEntries } from '../src/mobile/kamino-presentation';
+import { kaminoEntries, riskFields } from '../src/mobile/kamino-presentation';
+import { positionRisk } from '../src/protocols/kamino/math';
+import type { Obligation } from '../src/protocols/kamino/state';
 import { adapter, fixture, POSITION, WSOL } from './fixtures/kamino';
 
 describe('Kamino explorer records', () => {
@@ -16,6 +18,20 @@ describe('Kamino explorer records', () => {
       { action: 'withdraw', position: POSITION, token: f.mint, reserve: WSOL },
     ]);
     expect(kaminoEntries([...positions].reverse()).map(entry => entry.id)).toEqual(entries.map(entry => entry.id));
+  });
+  it('shows the stored risk values with their age on every entry of an indebted position', async () => {
+    const f = await fixture();
+    const entries = kaminoEntries(await adapter.getStatus(f.rpc, f.wallet.address));
+    for (const entry of entries) expect(entry.risk).toBe('LTV 10.0% · Max LTV 80.0% · Liquidation LTV 90.0% · Health 9.00. '
+      + 'Stored by Kamino less than a minute before this read; prices and interest may have moved since.');
+    const free = await fixture({ debt: 0n });
+    expect(kaminoEntries(await adapter.getStatus(free.rpc, free.wallet.address)).every(entry => entry.risk === undefined)).toBe(true);
+  });
+  it('rounds risk ratios toward liquidation', () => {
+    const state = { depositedValueSf: 3n, borrowFactorAdjustedDebtValueSf: 1n, allowedBorrowValueSf: 2n, unhealthyBorrowValueSf: 2n } as Obligation;
+    expect(riskFields(positionRisk(state)!)).toEqual([['LTV', '33.4%'], ['Max LTV', '66.6%'], ['Liquidation LTV', '66.6%'], ['Health', '2.00']]);
+    expect(positionRisk({ ...state, borrowFactorAdjustedDebtValueSf: 0n })).toBeNull();
+    expect(positionRisk({ ...state, depositedValueSf: 0n })).toBeNull();
   });
   it('retains restricted-position repayment candidates without enabling unsupported actions', () => {
     const entries = kaminoEntries([{ address: POSITION, reason: 'Unsupported collateral', repayments: [

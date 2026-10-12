@@ -8,6 +8,8 @@ import { executeMeteoraWithRpc } from '../src/operations/meteora';
 import { MeteoraAdapter } from '../src/protocols/meteora/adapter';
 import { executeSafeTransaction } from '../src/core/transaction';
 import { meteoraFixture, POSITION } from './fixtures/meteora';
+// 142 bins with a reward pack into two transactions; one-range positions need one.
+const TWO_STEPS={width:142,reward:true};
 async function setup(options:Parameters<typeof meteoraFixture>[0]={width:1}) {
   const f=await meteoraFixture(options),files=new Map<LocalFile,string>();
   const io={read:vi.fn(async(n:LocalFile)=>files.get(n)??null),write:vi.fn(async(n:LocalFile,v:string)=>{files.set(n,v);}),remove:vi.fn(async(n:LocalFile)=>{files.delete(n);})};
@@ -30,7 +32,7 @@ async function setup(options:Parameters<typeof meteoraFixture>[0]={width:1}) {
 }
 describe('durable Meteora controller',()=>{
   it('persists each signature before sending and each checkpoint before clearing pending',async()=>{
-    const f=await setup();
+    const f=await setup(TWO_STEPS);
     const send=f.rpc.sendTransaction.bind(f.rpc);
     f.rpc.sendTransaction=async tx=>{
       const pending=await f.store.load(),op=await f.store.loadMeteora!();
@@ -38,27 +40,27 @@ describe('durable Meteora controller',()=>{
       expect(pending?.position).toBe(POSITION);return send(tx);
     };
     await f.approveAll(f.start());
-    expect(f.states.at(-1)?.phase).toBe('confirmed');expect(f.states.at(-1)?.operation?.completed).toHaveLength(3);
+    expect(f.states.at(-1)?.phase).toBe('confirmed');expect(f.states.at(-1)?.operation?.completed).toHaveLength(2);
     expect(await f.store.load()).toBeNull();expect(await f.store.loadMeteora!()).toBeNull();
-    const events=f.io.write.mock.calls.map(c=>c[0]);expect(events.filter(n=>n==='pending.json')).toHaveLength(3);
+    const events=f.io.write.mock.calls.map(c=>c[0]);expect(events.filter(n=>n==='pending.json')).toHaveLength(2);
     expect(f.controller.locked).toBe(false);
   });
   it('restores confirmed partial progress and prepares only remaining steps',async()=>{
-    const f=await setup();const running=f.start();await f.review();f.controller.answer(true);
+    const f=await setup(TWO_STEPS);const running=f.start();await f.review();f.controller.answer(true);
     await vi.waitFor(()=>expect(f.states.at(-1)?.review?.action==='meteora-withdraw-all'&&f.states.at(-1)?.review && 'step' in f.states.at(-1)!.review!).toBe(true));
     await vi.waitFor(()=>expect(f.states.at(-1)?.operation?.completed).toHaveLength(1));
     await f.review();f.controller.answer(false);await running;
     expect(f.states.at(-1)?.phase).toBe('partial');await f.restart();expect(f.states.at(-1)?.phase).toBe('partial');
-    await f.approveAll(f.start());expect(f.rpc.sent).toHaveLength(3);expect(f.states.at(-1)?.phase).toBe('confirmed');
+    await f.approveAll(f.start());expect(f.rpc.sent).toHaveLength(2);expect(f.states.at(-1)?.phase).toBe('confirmed');
   });
   it('restores Token-2022 unknown results and resumes only after signature resolution',async()=>{
-    const f=await setup({width:1,token2022:true,reward:true,reward2022:true,transferFee:true,missingAta:true});
+    const f=await setup({...TWO_STEPS,token2022:true,reward2022:true,transferFee:true,missingAta:true});
     f.rpc.status=null;await f.approveAll(f.start());expect(f.states.at(-1)?.phase).toBe('unknown');
     await f.restart();expect(f.controller.locked).toBe(true);await f.start();expect(f.rpc.sent).toHaveLength(1);
     f.rpc.status={confirmationStatus:'confirmed',error:null,slot:100n};await f.controller.check();
     expect((await f.store.loadMeteora!())?.completed).toHaveLength(1);
     await f.approveAll(f.start());expect(f.states.at(-1)?.phase).toBe('confirmed');
-    expect(f.rpc.sent).toHaveLength(4);expect(await f.store.loadMeteora!()).toBeNull();
+    expect(f.rpc.sent).toHaveLength(2);expect(await f.store.loadMeteora!()).toBeNull();
   });
   it('blocks unknown signatures after expiry, RPC failure, wallet change and restart',async()=>{
     const f=await setup();f.rpc.sendError=true;await f.approveAll(f.start());
@@ -71,18 +73,18 @@ describe('durable Meteora controller',()=>{
     expect(await f.store.load()).not.toBeNull();
   });
   it('checks an unknown successful signature then resumes without repeating it',async()=>{
-    const f=await setup();f.rpc.status=null;await f.approveAll(f.start());
+    const f=await setup(TWO_STEPS);f.rpc.status=null;await f.approveAll(f.start());
     expect(f.states.at(-1)?.phase).toBe('unknown');expect(f.rpc.sent).toHaveLength(1);
     f.rpc.status={confirmationStatus:'confirmed',error:null,slot:100n};await f.restart();await f.controller.check();
     expect(f.states.at(-1)?.phase).toBe('partial');expect((await f.store.loadMeteora!())?.completed).toHaveLength(1);
-    await f.approveAll(f.start());expect(f.rpc.sent).toHaveLength(3);expect(f.states.at(-1)?.phase).toBe('confirmed');
+    await f.approveAll(f.start());expect(f.rpc.sent).toHaveLength(2);expect(f.states.at(-1)?.phase).toBe('confirmed');
   });
   it('does not duplicate a checkpoint if a crash occurs after saving confirmation and before clearing pending',async()=>{
-    const f=await setup();let failed=false;
+    const f=await setup(TWO_STEPS);let failed=false;
     f.io.remove.mockImplementation(async name=>{if(name==='pending.json'&&!failed){failed=true;throw new Error('disk error');}f.files.delete(name);});
     await f.approveAll(f.start());expect(f.states.at(-1)?.phase).toBe('unknown');expect(f.rpc.sent).toHaveLength(1);
     await f.restart();await f.controller.check();expect((await f.store.loadMeteora!())?.completed).toHaveLength(1);
-    await f.approveAll(f.start());expect(f.rpc.sent).toHaveLength(3);
+    await f.approveAll(f.start());expect(f.rpc.sent).toHaveLength(2);
   });
   it('announces completion only after checking final state, even after a recovered close',async()=>{
     const f=await setup({shares:false});f.rpc.status=null;await f.approveAll(f.start());
@@ -109,9 +111,9 @@ describe('durable Meteora controller',()=>{
     await f.approveAll(rejected);expect(f.rpc.sent).toHaveLength(0);expect(f.states.at(-1)?.message).toMatch(/rejected/);
   });
   it('allows MWA foreground handoff for every step and verifies wallet signatures',async()=>{
-    const f=await setup();const sign=vi.fn(async tx=>{f.controller.setForeground(false);f.controller.setForeground(true);return signTransaction([f.signer.keyPair],tx);});
+    const f=await setup(TWO_STEPS);const sign=vi.fn(async tx=>{f.controller.setForeground(false);f.controller.setForeground(true);return signTransaction([f.signer.keyPair],tx);});
     await f.approveAll(f.controller.startMeteora('https://example.com',f.signer.address,POSITION,{signWithWallet:sign}));
-    expect(sign).toHaveBeenCalledTimes(3);expect(f.states.at(-1)?.phase).toBe('confirmed');
+    expect(sign).toHaveBeenCalledTimes(2);expect(f.states.at(-1)?.phase).toBe('confirmed');
   });
   it('stops an expired pre-signature blockhash without sending or creating a pending signature',async()=>{
     const f=await setup();const running=f.start();await f.review();f.rpc.height=101n;f.controller.answer(true);await running;
@@ -121,7 +123,7 @@ describe('durable Meteora controller',()=>{
     expect(f.states.at(-1)?.message).toContain('without long pauses');
   });
   it('keeps confirmed progress when the next step expires and explains how to resume',async()=>{
-    const f=await setup();const running=f.start();await f.review();f.controller.answer(true);
+    const f=await setup(TWO_STEPS);const running=f.start();await f.review();f.controller.answer(true);
     await vi.waitFor(()=>expect(f.states.at(-1)?.operation?.completed).toHaveLength(1));
     await f.review();f.rpc.height=101n;f.controller.answer(true);await running;
     expect(f.rpc.sent).toHaveLength(1);expect(await f.store.load()).toBeNull();

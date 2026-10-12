@@ -4,18 +4,18 @@ import { ZERO, check, decode, tokenState } from "./accounts";
 import type { Obligation } from "./state";
 import { computeBudget, refreshPreview, operationFarms, validateSimulationSnapshot, type PreparationOptions, type OperationPlan } from "./operation-common";
 import { ProgramInterface } from "../../core/program-interface";
-import { SF, U64_MAX, ceilDiv, collateralForAmount, parseAmount, redeemAmount, remainingWithdrawalCap } from "./math";
+import { SF, U64_MAX, ceilDiv, collateralForAmount, parseAmount, positionRisk, redeemAmount, remainingWithdrawalCap } from "./math";
 import ataIdl from "./ata.idl.json" with { type: "json" };
 
 const ataInterface = new ProgramInterface(ataIdl);
 
-function maxCollateral(position: Position, reserveKey: Address): bigint {
+// ltvPct is the elevation group's LTV in eMode, otherwise the reserve's own.
+function maxCollateral(position: Position, reserveKey: Address, ltvPct: number): bigint {
   const deposit = deposits(position.state).find(x => x.depositReserve === reserveKey)!;
   if (borrows(position.state).length === 0) return deposit.depositedAmount;
-  const config = position.reserves.get(reserveKey)!.state.config;
   const available = position.state.allowedBorrowValueSf - position.state.borrowFactorAdjustedDebtValueSf;
   if (available <= 0n) return 0n;
-  const maxValue = config.loanToValuePct === 0 ? deposit.marketValueSf : available * 100n / BigInt(config.loanToValuePct);
+  const maxValue = ltvPct === 0 ? deposit.marketValueSf : available * 100n / BigInt(ltvPct);
   const value = maxValue < deposit.marketValueSf ? maxValue : deposit.marketValueSf;
   check(deposit.marketValueSf > 0n, "zero collateral market value");
   let amount = (value * SF / deposit.marketValueSf) * deposit.depositedAmount / SF;
@@ -48,7 +48,10 @@ export async function prepareWithdraw(options: PreparationOptions): Promise<Oper
   const farms = await operationFarms(adapter, position, reserve.farmCollateral);
   const deposit = deposits(position.state).find(x => x.depositReserve === reserveKey)!;
   const cap = remainingWithdrawalCap(reserve.config.depositWithdrawalCap, position.clock.unixTimestamp);
-  const max = maxCollateral(position, reserveKey);
+  const group = adapter.elevationGroup(position.state, position.market);
+  check(!group || group.allowNewLoans !== 0 || borrows(position.state).length === 0,
+    "this position's elevation group (eMode) has new loans disabled; Kamino allows collateral withdrawal only after the debt is repaid");
+  const max = maxCollateral(position, reserveKey, group ? group.ltvPct : reserve.config.loanToValuePct);
   let collateralAmount = requested === null ? max : collateralForAmount(requested, reserve);
   check(collateralAmount > 0n && collateralAmount <= deposit.depositedAmount && collateralAmount <= max,
     "withdrawal exceeds available collateral or the remaining position's maximum LTV");
@@ -75,7 +78,7 @@ export async function prepareWithdraw(options: PreparationOptions): Promise<Oper
   const simulationAccounts = [position.address, recipient, adapter.marketAddress, ...position.reserves.keys()];
   return {
     instructions, simulationAccounts, estimate, token: token.symbol,
-    decimals: token.decimals, reserve: reserveKey, recipient, createsAta, collateralAmount,
+    decimals: token.decimals, reserve: reserveKey, recipient, createsAta, collateralAmount, risk: positionRisk(position.state),
     validateSimulation(result) {
       const accounts = validateSimulationSnapshot(adapter, position, simulationAccounts, result);
       const tokenAfter = tokenState(accounts[1], address(token.mint), wallet);

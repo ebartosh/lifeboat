@@ -5,6 +5,7 @@ import { instructionDiagnosticDetails, lighthouseDiagnosticDetails } from './ins
 
 type TransactionEvent = 'start' | 'blockhash-start' | 'message-build' | 'simulation-start'
   | 'simulation-validation' | 'fee-read' | 'review-wait' | 'review-approved' | 'cancelled'
+  | 'lifetime-refresh' | 'fresh-simulation-start' | 'fresh-simulation-validation'
   | 'pre-sign-height' | 'signing-start' | 'signing-result' | 'signature-validation'
   | 'post-sign-height' | 'pending-save' | 'pre-send-height' | 'send-start' | 'send-result'
   | 'confirmation-start' | 'confirmed' | 'wallet-simulation-start' | 'wallet-simulation-validation'

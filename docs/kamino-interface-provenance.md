@@ -154,8 +154,9 @@ encodes the eight-byte discriminator and strict one-byte bool (`01` for true).
 
 Both operation arguments are little-endian u64 after the eight-byte discriminator.
 V2 invokes Farms internally; deprecated v1 refresh-farm sandwich instructions are
-not used. No remaining deposit reserves are needed for repayment outside elevation
-groups. This MVP rejects elevation groups rather than constructing that alternate path.
+not used. Outside elevation groups repayment takes no remaining accounts. Inside one,
+every active deposit reserve follows as a writable remaining account, in obligation
+order; see [elevation groups](#elevation-groups-emode-2026-10-08).
 
 ## Native SOL repayment evidence
 
@@ -393,6 +394,8 @@ restrictions and temporary availability. All 29 compatible reserves have both
 repay and withdraw flags in metadata. The other 29 are excluded: 3 Token-2022,
 11 Obsolete/Hidden, and 15 otherwise active reserves with existing unsupported
 autodeleverage or collateral-use restrictions. These restrictions were not relaxed.
+On 2026-10-08 the collateral-use restriction was relaxed for elevation groups; 11 of
+those 15 are now withdraw-only inside group 2 (see the eMode section below).
 The three extra USDC reserves are Hidden; they are not bundled transfer targets.
 
 Every included reserve uses its recorded vault and collateral mint addresses,
@@ -431,6 +434,64 @@ To reproduce: build, run the capture script with a read-only RPC, run the invent
 bundler, review its public records and matrix, then rebuild and run all required
 checks. Existing source commits, IDL checksum, layouts and instruction encodings
 are unchanged. No lookup tables were added; legacy transaction size limits remain.
+
+### Elevation groups (eMode) (2026-10-08)
+
+Verified against the same pinned KLend commit; the IDL, layouts, discriminators and
+instruction encodings are unchanged. Obligations with `elevationGroup` 1–32 are now
+accepted; tag 0 and every other position-wide exclusion remain.
+
+- `state/lending_market.rs::get_elevation_group` reads `elevation_groups[id - 1]`;
+  `lending_operations.rs::get_elevation_group` rejects a zero LTV or threshold. The
+  adapter additionally requires a matching id, LTV no greater than the threshold,
+  a threshold of at most 100 and a nonzero debt reserve.
+- `refresh_obligation_borrows`/`refresh_obligation_deposits` require every leg's
+  reserve to list the group and forbid the group debt reserve as collateral. The
+  adapter checks the same before planning, after the refresh preview and on the
+  final simulated reserves, and requires every borrow to be the group debt reserve.
+- `get_max_ltv_and_liquidation_threshold` returns the group's LTV and threshold for
+  every collateral; `Reserve::borrow_factor_f` is one inside a group, which the
+  refreshed obligation aggregates already reflect. `Obligation::max_withdraw_value`
+  (`LtvMaxWithdrawalCheck::MaxLtv` in the V2 withdraw handler) therefore divides
+  headroom by the group LTV; local sizing does the same.
+- `withdraw_obligation_collateral` calls `check_elevation_group_borrowing_enabled`
+  while debt remains, so a group with `allow_new_loans == 0` blocks withdrawal until
+  repayment. The adapter rejects that case before simulation.
+- `update_elevation_group_debt_trackers_on_repay` iterates `active_deposits_mut` and
+  consumes one writable deposit Reserve per active deposit from the repay handler's
+  remaining accounts. Repayment appends them in obligation order; the repayment
+  refresh batch already includes the same reserves.
+- `disable_usage_as_coll_outside_emode` marks an obligation holding that collateral
+  outside a group as borrowing-disabled; this client does not plan for that state.
+  `validateReserve` accepts such a reserve only when the obligation is in a group
+  that the reserve lists. The 11 active LST reserves whose
+  only exclusion was this flag are bundled for withdrawal; their repay flag stays
+  false because debt-side use was not reviewed (group 2 allows only WSOL debt).
+
+`tests/kamino-emode.test.ts` uses the recorded market's real groups: group LTV
+sizing against the reserve LTV, every eMode-only reserve inside and outside its
+group, new loans disabled, the repayment remaining accounts, and mismatched debt,
+collateral and unconfigured groups. These are modeled RPC results, not BPF execution.
+
+### Multiply obligations (tag 1) (2026-10-08)
+
+Verified against the same pinned KLend commit. `handlers/handler_init_obligation.rs`
+uses the tag only as the first obligation PDA seed, and `check_obligation_seeds`
+only constrains the two seed accounts (tag 0: default keys; tag 1: two mints;
+tag 2: one mint twice; tag 3: two mints). `Obligation::init` stores the tag. No
+repay, withdraw, refresh, elevation-group or farms path in `lending_operations.rs`
+or the handlers reads it. `validateObligation` therefore accepts tag 1 alongside
+tag 0, with every other position-wide exclusion unchanged; tags 2 and 3 stay
+rejected only because they were not requested, not because of a known difference.
+The obligation is still discovered by the wallet-owner filter and verified by
+owner, discriminator, size, wallet and market rather than by its PDA seeds.
+
+Multiply positions are usually leveraged eMode loops. Lifeboat adds no swap or
+flash-loan path: repayment needs wallet funds and withdrawal with debt stays
+bounded by the group LTV. Active obligation orders (deleveraging triggers) are
+still rejected. The interface labels Multiply and eMode positions in the details.
+`tests/kamino-multiply.test.ts` plans ATA and native SOL repayment and withdrawal
+for a modeled tag 1 SOL eMode position, checks the labels, and rejects tags 2 and 3.
 
 ### Operation-specific MVP regression coverage (2026-09-28)
 

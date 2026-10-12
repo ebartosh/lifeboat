@@ -28,6 +28,7 @@ lifeboat-wallet.json*
 lifeboat-external-wallet.json*
 lifeboat-pending.json*
 lifeboat-meteora-operation.json*
+lifeboat-orca-operation.json*
 lifeboat-rpc.txt*
 
 # IDE and operating system files

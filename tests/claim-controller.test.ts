@@ -1,10 +1,11 @@
 import { testWalletSigning } from './fixtures/signer';
 import { address, blockhash, getSignatureFromTransaction, signTransaction, type Address, type Transaction } from '@solana/kit';
 import { describe, expect, it, vi } from 'vitest';
-import { ClaimController, type ClaimState } from '../src/mobile/claim-controller';
+import { ClaimController, type ClaimDependencies, type ClaimState } from '../src/mobile/claim-controller';
 import { createPendingStore } from '../src/mobile/pending-store';
 import type { LocalFile } from '../src/mobile/storage';
 import type { SignatureStatus } from '../src/core/rpc';
+import type { TransactionReceipt } from '../src/core/receipt';
 import { claimOreRewards } from '../src/operations/ore';
 import { createOreAdapter } from '../src/protocols/ore-bundle';
 import { createMinerFixture } from './fixtures/miner';
@@ -215,6 +216,35 @@ describe('mobile claim lifecycle with real test-key signing', () => {
     expect(f.deps.status).toHaveBeenCalledWith(pending);
     expect(states.at(-1)?.phase).toBe('confirmed');
   });
+  it('persists a staking reward claim before sending and restores it for a status check', async () => {
+    const f = await setup();
+    const stakeRewards = vi.fn(async (_url: string, input: Parameters<NonNullable<ClaimDependencies['stakeRewards']>>[1]) => {
+      const identity = { signature: ('1'.repeat(64)) as import('@solana/kit').Signature, wallet: f.signer.address,
+        blockhash: '11111111111111111111111111111111', lastValidBlockHeight: 100n };
+      await input.beforeSend!(identity);
+      throw new Error('response lost');
+    });
+    const deps = { ...f.deps, stakeRewards };
+    const states: ClaimState[] = [];
+    const controller = new ClaimController(deps, state => states.push(state));
+    await controller.restore();
+    await controller.start('https://example.com', f.signer.address, 'claim-stake-rewards', { signWithWallet: f.signWithWallet });
+    expect(states.at(-1)?.phase).toBe('unknown');
+    expect(await f.store.load()).toMatchObject({ action: 'claim-stake-rewards', wallet: f.signer.address });
+    const restarted = new ClaimController(deps, state => states.push(state));
+    await restarted.restore();
+    expect(states.at(-1)).toMatchObject({ phase: 'unknown', pending: { action: 'claim-stake-rewards' } });
+    await restarted.check();
+    expect(states.at(-1)?.phase).toBe('confirmed'); expect(await f.store.load()).toBeNull();
+  });
+  it('reports a staking reward claim with nothing accrued as empty', async () => {
+    const f = await setup();
+    const controller = new ClaimController({ ...f.deps, stakeRewards: async () => ({ status: 'nothing-to-claim' as const }) },
+      state => f.states.push(state));
+    await controller.restore();
+    await controller.start('https://example.com', f.signer.address, 'claim-stake-rewards', { signWithWallet: f.signWithWallet });
+    expect(f.states.at(-1)?.phase).toBe('empty'); expect(await f.store.load()).toBeNull();
+  });
   it('keeps an expired missing status unknown instead of enabling a new send', async () => {
     const f = await setup(); f.rpc.sendTransaction.mockRejectedValue(new Error('lost'));
     const operation = f.start(); await f.review(); f.controller.answer(true); await operation;
@@ -246,5 +276,46 @@ describe('mobile claim lifecycle with real test-key signing', () => {
     const f = await setup(); f.rpc.simulateTransaction.mockResolvedValue({ error: 'failure', logs: ['secret'] });
     await f.start(); expect(f.states.at(-1)?.phase).toBe('error');
     expect(f.signWithWallet).not.toHaveBeenCalled(); expect(f.rpc.sendTransaction).not.toHaveBeenCalled();
+  });
+  it('adds the measured receipt to the confirmed state without delaying it', async () => {
+    const f = await setup();
+    let deliver!: (receipt: TransactionReceipt | null) => void;
+    const receipt = vi.fn((..._args: unknown[]) => new Promise<TransactionReceipt | null>(resolve => { deliver = resolve; }));
+    const controller = new ClaimController({ ...f.deps, receipt }, state => f.states.push(state));
+    await controller.restore();
+    const operation = controller.start('https://example.com/secret', f.signer.address, 'claim-sol', { signWithWallet: f.signWithWallet });
+    await f.review(); controller.answer(true); await operation;
+    const confirmed = f.states.at(-1)!;
+    expect(confirmed.phase).toBe('confirmed'); expect(confirmed.receipt).toBeUndefined();
+    expect(receipt).toHaveBeenCalledWith('https://example.com/secret', f.signer.address, [confirmed.signature]);
+    deliver({ transactions: 1, failed: 0, feeLamports: 5000n, solChange: 995_000n, tokens: [] });
+    await vi.waitFor(() => expect(f.states.at(-1)).toEqual({ ...confirmed, receipt: expect.objectContaining({ solChange: 995_000n }) }));
+  });
+  it('keeps the confirmed state when the receipt cannot be read', async () => {
+    const f = await setup();
+    const receipt = vi.fn(async () => { throw new Error('getTransaction unsupported'); });
+    const controller = new ClaimController({ ...f.deps, receipt }, state => f.states.push(state));
+    await controller.restore();
+    const operation = controller.start('https://example.com/secret', f.signer.address, 'claim-sol', { signWithWallet: f.signWithWallet });
+    await f.review(); controller.answer(true); await operation;
+    await vi.waitFor(() => expect(receipt).toHaveBeenCalled()); await Promise.resolve();
+    expect(f.states.at(-1)?.phase).toBe('confirmed'); expect(f.states.at(-1)?.receipt).toBeUndefined();
+  });
+  it('dismisses a finished result, and a late receipt does not bring it back', async () => {
+    const f = await setup();
+    let deliver!: (receipt: TransactionReceipt | null) => void;
+    const receipt = vi.fn(() => new Promise<TransactionReceipt | null>(resolve => { deliver = resolve; }));
+    const controller = new ClaimController({ ...f.deps, receipt }, state => f.states.push(state));
+    await controller.restore();
+    const operation = controller.start('https://example.com/secret', f.signer.address, 'claim-sol', { signWithWallet: f.signWithWallet });
+    await f.review(); controller.answer(true); await operation;
+    controller.dismiss(); expect(f.states.at(-1)?.phase).toBe('idle');
+    deliver({ transactions: 1, failed: 0, feeLamports: 5000n, solChange: 995_000n, tokens: [] }); await Promise.resolve();
+    expect(f.states.at(-1)?.phase).toBe('idle');
+  });
+  it('keeps an unknown result shown when dismissed', async () => {
+    const f = await setup(); f.rpc.sendTransaction.mockRejectedValue(new Error('lost response'));
+    const operation = f.start(); await f.review(); f.controller.answer(true); await operation;
+    f.controller.dismiss(); expect(f.states.at(-1)?.phase).toBe('unknown');
   });
 });

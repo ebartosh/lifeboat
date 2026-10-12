@@ -1,0 +1,242 @@
+{
+    "assessmentDate":  "2026-10-11",
+    "scope":  "Read-only RPC metadata and an unsigned permission-gate simulation; no transactions submitted.",
+    "deployment":  {
+                       "retrievedAt":  "2026-10-11T16:46:00.116Z",
+                       "rpc":  "https://api.mainnet-beta.solana.com",
+                       "slot":  455721983,
+                       "records":  [
+                                       {
+                                           "name":  "Jupiter Perps",
+                                           "program":  "PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu",
+                                           "executable":  true,
+                                           "programData":  "C258LjtN8Q928yz2nJe5kwQycckGfWBSrhZBP2mTpLQt",
+                                           "idlAddress":  "38GK1i4cQPAxqrbfKX4RRMNfXpKRn5PgLFHVJeXm1C8Y",
+                                           "idlPresent":  true,
+                                           "summary":  {
+                                                           "name":  "perpetuals",
+                                                           "idlSha256":  "1d90a653a1cc88bddb7c5876acee52d3f26c6b1e3306e0833234020dc6f7d653",
+                                                           "instructionCount":  59,
+                                                           "instructions":  [
+                                                                                {
+                                                                                    "name":  "withdrawFees2",
+                                                                                    "signers":  [
+                                                                                                    "keeper"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "withdrawStake",
+                                                                                    "signers":  [
+                                                                                                    "keeper"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "createDecreasePositionRequest2",
+                                                                                    "signers":  [
+                                                                                                    "owner"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "createDecreasePositionMarketRequest",
+                                                                                    "signers":  [
+                                                                                                    "owner"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "updateDecreasePositionRequest2",
+                                                                                    "signers":  [
+                                                                                                    "owner"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "closePositionRequest2",
+                                                                                    "signers":  [
+                                                                                                    "keeper"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "closePositionRequest3",
+                                                                                    "signers":  [
+                                                                                                    "keeper"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "decreasePosition4",
+                                                                                    "signers":  [
+                                                                                                    "keeper"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "decreasePositionWithInternalSwap",
+                                                                                    "signers":  [
+                                                                                                    "keeper"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "decreasePositionWithTpsl",
+                                                                                    "signers":  [
+                                                                                                    "keeper"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "decreasePositionWithTpslAndInternalSwap",
+                                                                                    "signers":  [
+                                                                                                    "keeper"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "instantDecreasePosition",
+                                                                                    "signers":  [
+                                                                                                    "keeper",
+                                                                                                    "apiKeeper",
+                                                                                                    "owner"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "instantDecreasePosition2",
+                                                                                    "signers":  [
+                                                                                                    "keeper",
+                                                                                                    "apiKeeper",
+                                                                                                    "owner"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "withdrawCollateralForBorrows",
+                                                                                    "signers":  [
+                                                                                                    "owner"
+                                                                                                ]
+                                                                                }
+                                                                            ]
+                                                       },
+                                           "lastDeploySlot":  "413092478",
+                                           "upgradeAuthority":  "5myNNmEmPm3UAnJ2ggLEpnTFb9t9Gk8369wKw6n3uAKx"
+                                       },
+                                       {
+                                           "name":  "GMTrade store",
+                                           "program":  "Gmso1uvJnLbawvw7yezdfCDcPydwW2s2iqG3w6MDucLo",
+                                           "executable":  true,
+                                           "programData":  "CSp2sB68THdrJP6N7Au4Y5u89VJ1E1ebaqZ2soHhQvav",
+                                           "idlAddress":  "7EajSAQ8RufQsMrcVZzdAV5XmFNvFZahWvcknMzMJeQg",
+                                           "idlPresent":  true,
+                                           "summary":  {
+                                                           "name":  "gmsol_store",
+                                                           "idlSha256":  "3612447c45cb3571b0429df7f230ef41f1886cfdd5005b888d05344697eb7c1f",
+                                                           "instructionCount":  130,
+                                                           "instructions":  [
+                                                                                {
+                                                                                    "name":  "close_glv_withdrawal",
+                                                                                    "signers":  [
+                                                                                                    "executor"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "close_order_v2",
+                                                                                    "signers":  [
+                                                                                                    "executor"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "close_withdrawal",
+                                                                                    "signers":  [
+                                                                                                    "executor"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "create_glv_withdrawal",
+                                                                                    "signers":  [
+                                                                                                    "owner"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "create_withdrawal",
+                                                                                    "signers":  [
+                                                                                                    "owner"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "execute_decrease_order_v2",
+                                                                                    "signers":  [
+                                                                                                    "authority"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "execute_glv_withdrawal",
+                                                                                    "signers":  [
+                                                                                                    "authority"
+                                                                                                ]
+                                                                                },
+                                                                                {
+                                                                                    "name":  "execute_withdrawal",
+                                                                                    "signers":  [
+                                                                                                    "authority"
+                                                                                                ]
+                                                                                }
+                                                                            ]
+                                                       },
+                                           "lastDeploySlot":  "438769784",
+                                           "upgradeAuthority":  "6qp7veALWas5rxXJRQXUEbffRtDyhB8koxenBpS51SrA"
+                                       }
+                                   ],
+                       "documentedAccounts":  [
+                                                  {
+                                                      "address":  "DNnX2B1oiYqKLrbLLod1guuaZA28DQwJ8HuHsgDafoQK",
+                                                      "exists":  false
+                                                  },
+                                                  {
+                                                      "address":  "FBLzd5VM67MEKkoWerXu7Nu1ksbLXQvJDx63y5aeLEvt",
+                                                      "exists":  true,
+                                                      "owner":  "PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu",
+                                                      "executable":  false,
+                                                      "dataLength":  216,
+                                                      "positionOwner":  "815wh1VLC8D7ZWMa3uB7GgjHFetANuML2dPrJiLV1nVF",
+                                                      "sizeUsdAtomic":  "0"
+                                                  },
+                                                  {
+                                                      "address":  "72R843XwZxqWhsJceARQQTTbYtWy6Zw9et2YV4FpRHTa",
+                                                      "exists":  true,
+                                                      "owner":  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                                                      "executable":  false,
+                                                      "dataLength":  165
+                                                  }
+                                              ]
+                   },
+    "jupiterKeeperProbe":  {
+                               "retrievedAt":  "2026-10-11T16:48:43.894Z",
+                               "slot":  455722737,
+                               "instruction":  "instantDecreasePosition",
+                               "positionAddress":  "FBLzd5VM67MEKkoWerXu7Nu1ksbLXQvJDx63y5aeLEvt",
+                               "positionSizeUsdAtomic":  "0",
+                               "testedKeeper":  "815wh1VLC8D7ZWMa3uB7GgjHFetANuML2dPrJiLV1nVF",
+                               "testedApiKeeper":  "815wh1VLC8D7ZWMa3uB7GgjHFetANuML2dPrJiLV1nVF",
+                               "unsigned":  true,
+                               "submitted":  false,
+                               "error":  {
+                                             "InstructionError":  [
+                                                                      1,
+                                                                      {
+                                                                          "Custom":  6034
+                                                                      }
+                                                                  ]
+                                         },
+                               "permissionLogs":  [
+                                                      "Program log: Check permissions",
+                                                      "Program log: AnchorError thrown in programs/perpetuals/src/instructions/instant_decrease_position.rs:159. Error Code: InvalidKeeper. Error Number: 6034. Error Message: Invalid Keeper."
+                                                  ],
+                               "custody":  {
+                                               "address":  "7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz",
+                                               "mint":  "So11111111111111111111111111111111111111112",
+                                               "dovesOracle":  "39cWjvHrpHNz2SbXv6ME4NPhqBDBd4KsjUYv5JkHEAJU",
+                                               "dovesAgOracle":  "FYq2BWQ1V5P1WFBqr3qB2Kb5yHVvSv7upzKodgQE5zXh",
+                                               "oracle":  {
+                                                              "oracleAccount":  "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE",
+                                                              "oracleType":  "Pyth",
+                                                              "buffer":  "50",
+                                                              "maxPriceAgeSec":  5
+                                                          },
+                                               "disableClosePositionRequest":  false
+                                           },
+                               "existingRequestAddressesForExampleOwner":  [
+
+                                                                           ]
+                           }
+}

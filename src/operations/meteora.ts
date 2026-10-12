@@ -39,10 +39,11 @@ export async function executeMeteoraWithRpc(rpc: MeteoraRpc, input: MeteoraExecu
     const plan = await prepareWithdrawAll({rpc,wallet:input.wallet,position:operation.position,adapter,minSlot});
     input.assertActive?.();
     if (!plan) {
-      check(operation.completed.some(c => c.step.kind === 'close'), 'position is missing without a confirmed close step');
+      check(operation.completed.some(c => c.step.actions.some(a => a.kind === 'close')), 'position is missing without a confirmed close step');
       return {status:'confirmed',operation};
     }
-    check(!operation.completed.some(c => c.step.id === plan.step.id), 'confirmed step effects are not visible; continuation is blocked');
+    const confirmedActions = new Set(operation.completed.flatMap(c => c.step.actions.map(a => a.id)));
+    check(!plan.step.actions.some(a => confirmedActions.has(a.id)), 'confirmed step effects are not visible; continuation is blocked');
     input.progress?.(operation);
     const result = await executeStep({rpc,wallet:input.wallet,signWithWallet:input.signWithWallet,
       assertActive:input.assertActive,instructions:plan.instructions,simulationAccounts:plan.simulationAccounts,

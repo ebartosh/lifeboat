@@ -1,0 +1,14 @@
+{
+  "programId": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+  "idlVersion": "0.3.4",
+  "idlSource": "npm @orca-so/whirlpools-sdk@0.13.16 dist/artifacts/whirlpool.json",
+  "idlPackageIntegrity": "sha512-pDN6GMPLHhtQtyJ8fiZr4itf59Nvsoj0lKgqC+G5g2D3UvZ1eaArZ9/MsoaTZnE2KdyZhEi3gQJtIkr+9jPOjA==",
+  "idlSha256": "31f112eeea2eb01df489921e44694283806aa7a52a9728e6b420078ec1ebf864",
+  "sdkVersion": "0.13.16",
+  "sourceRepository": "https://github.com/orca-so/whirlpools",
+  "sourceCommit": "e528dd23bb41571f92cfdb49a2f15d4fa0b01bec",
+  "license": "Apache-2.0",
+  "licenseNote": "Last Apache-2.0 commit (2025-02-26). Later Orca source and npm releases use the Orca License and are not used.",
+  "network": "mainnet-beta",
+  "tokenInterface": "../../core/token-interface.json"
+}

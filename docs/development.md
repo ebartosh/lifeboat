@@ -27,6 +27,8 @@ Output: `android/app/build/outputs/apk/debug/app-debug.apk`. This debug APK requ
 
 Expo generates `android/`, which is excluded from Git. Keep permanent settings in Expo configuration, plugins, or scripts, rather than only in generated files.
 
+Launcher artwork is stored in `assets/icon.png` and `assets/adaptive-icon.png`, referenced by `app.json`. After changing either image, run Android prebuild with `--no-clean --no-install` before the next APK build; Metro alone cannot update an installed launcher icon. On this machine use `node node_modules/expo/bin/cli prebuild --platform android --no-clean --no-install`. The October 9 rope-free logo uses the approved 1254 × 1254 image unchanged for the main icon. Its adaptive version centers a 1046 × 1046 copy on a 1254 × 1254 transparent canvas with 104 px padding, over the configured white background. Prebuild synchronized the existing native project, all 15 generated launcher image dimensions were checked, and circular-mask previews were inspected at 48, 72, and 96 px. No APK was built or installed for this asset change.
+
 With the installed Expo CLI 57.0.27, prebuild defaults to recreating native folders (`clean: !args['--no-clean']` in the local CLI). Use **`--no-clean` explicitly** for ordinary native synchronization. On October 6, the previously documented command without that flag recreated `android/` while removing document-picker, causing extra native recompilation. No Gradle clean or cache-clearing command was issued. The current template's signing certificate remained unchanged.
 
 ## Verified environment
@@ -56,6 +58,14 @@ Alternative tool locations can be passed through `-JavaPath` and `-SdkPath`. The
 
 The script limits Gradle to two workers, disables parallel tasks, runs the Kotlin compiler in-process, and limits CMake to two threads. JVM memory: 2048 MiB heap, 1024 MiB metaspace. These settings survive prebuild. A previous build with a 512 MiB metaspace limit produced a memory warning; the successful build used 1024 MiB.
 
+### Second machine (user `Bartosh-en`)
+
+On October 8, 2026, debug arm64-v8a was built here and installed on a Samsung Galaxy A54 (SM-A546B, serial `RZCW4097DLF`) over USB. The first native build took 21 minutes. Verified tools: Node.js 22.19.0; JDK 17.0.12 at the script's default `C:\Program Files\Java\jdk-17` (Android Studio's bundled JBR is Java 25 and was not used); SDK at the default `%LOCALAPPDATA%\Android\Sdk` with Platforms 36 and 37, Build-Tools 36.0.0, NDK 27.1.12297006, CMake 4.1.2, command-line tools and platform-tools. An x86_64 API 37 AVD exists but testing uses the phone.
+
+Corepack's cached pnpm 12.6.0 is incomplete on this machine (`pnpm.cjs` missing), so `corepack pnpm …` fails. Run installed entry points with Node instead, for example `node node_modules/expo/bin/cli prebuild --platform android --no-clean`.
+
+Both machines sign with the Expo template's `android/app/debug.keystore` (SHA-256 `FA:C6:17:45:…:91:03:3B:9C`) for debug and release, so `adb install -r` updates an app installed from the other machine and keeps its data. The phone does not need USB file-transfer mode; USB debugging works in any USB mode once the computer is authorized.
+
 ## Running on the emulator
 
 Start the Android AVD through Android Studio. Start Metro in a separate terminal:
@@ -80,6 +90,8 @@ $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 `install -r` updates the app while retaining data. Repeat `adb reverse` after restarting the emulator. After the development client's initial welcome screen, repeat the link-opening command if necessary. JS/TS-only changes do not require APK reinstallation.
 
 If the app cannot connect, first check Metro on port 8081, the device ID, and `adb reverse --list`. For a build failure, start with the specific log error; reinstalling the SDK/JDK or clearing all caches is not the first step.
+
+A debug build that turns black after positions load, with `Do not know how to serialize a BigInt` followed by `Should not already be working` in `ReactNativeJS` logcat, is React 19.2's development performance track calling `JSON.stringify` on a `bigint[]` prop. `src/mobile/polyfills.ts` handles this in development only, for array calls without a replacer. Do not use `BigInt.prototype.toJSON` instead: it runs before `@solana/kit`'s replacer, so RPC requests then fail with `INVALID_PARAMS`. This was verified on the phone on October 12, 2026; release builds use the production renderer and are unaffected.
 
 ## Running on a phone from Android Studio
 
@@ -225,7 +237,36 @@ node --import tsx scripts/capture-meteora-mainnet.mjs
 node --import tsx scripts/simulate-meteora-mainnet.mjs
 ```
 
-Capture updates `tests/fixtures/meteora/mainnet.json`; simulation writes `.cache/meteora-mainnet-simulation.json`. The simulation helper has no signing material, declines confirmation and disables submission. A public position may be empty, locked, unsupported or insufficiently funded for the simulated network fee; inspect the report instead of funding it. Simulation can return a closed position as an empty zero-lamport system account, so both that exact tombstone and `null` are recognized.
+Capture updates `tests/fixtures/meteora/mainnet.json`; simulation writes `.cache/meteora-mainnet-simulation.json`. By default it simulates the first prepared transaction of one position in the captured pool. Set `METEORA_POOL` to another pool address and `METEORA_POSITIONS` to the number of positions to simulate; the report records each transaction's actions, size and compute units. The simulation helper has no signing material, declines confirmation and disables submission. A public position may be empty, locked, unsupported or insufficiently funded for the simulated network fee; inspect the report instead of funding it. Simulation can return a closed position as an empty zero-lamport system account, so both that exact tombstone and `null` are recognized.
+
+### Orca verification
+
+The normal suite includes independent Whirlpool/Position/TickArray byte fixtures, recomputed Anchor discriminators, ported math, PDA and instruction checks, transaction splitting, Token-2022 receipts, simulation postconditions, and durable controller/restart tests (`tests/orca-*.test.ts`). `pnpm test:interface` includes the Orca list, restrictions, review notes, partial progress and unknown-result states.
+
+Optional SDK differential verification against the last Apache-2.0 release (see [Orca provenance](orca-interface-provenance.md) for why later releases are not used):
+
+```powershell
+npm.cmd install --prefix .cache/orca-reference --ignore-scripts --no-audit --no-fund --save-exact @orca-so/whirlpools-sdk@0.13.16 @orca-so/common-sdk@0.6.10 @coral-xyz/anchor@0.29.0 @solana/web3.js@1.98.0 @solana/spl-token@0.4.12 decimal.js@10.5.0
+node --import tsx scripts/verify-orca-reference.mjs
+```
+
+The report is `.cache/orca-reference/report.json`; the script checks the exact SDK version and licenses and makes no network calls.
+
+Unsigned mainnet simulation of public positions (read-only; signing and submission disabled):
+
+```powershell
+node --import tsx scripts/simulate-orca-mainnet.mjs
+```
+
+It discovers positions of `ORCA_POOLS` (comma-separated, default the SOL/USDC 64 and 4 tick-spacing pools) through a filtered `getProgramAccounts`, finds each NFT holder with a mint-filtered token-account scan (the public RPC throttles `getTokenLargestAccounts`), and simulates the first prepared transaction for up to `ORCA_PER_CATEGORY` positions per category (empty, in range, out of range; default 1), checking at most `ORCA_MAX_ATTEMPTS` positions (default 40). `ORCA_DYNAMIC=1` keeps only positions with a tick array outside the pinned fixed format. It retries HTTP 429 with backoff, so a public RPC run takes several minutes; `SOLANA_RPC_URL` selects another RPC. The report is `.cache/orca-mainnet-simulation.json`. A public position may be unsupported or its holder unable to pay the simulated fee; such attempts are recorded, not funded.
+
+Unsigned ORE staking reward claim against a public staker (optionally pass another wallet address):
+
+```powershell
+node --import tsx scripts/simulate-ore-stake-claim.mjs
+```
+
+It writes `.cache/ore-stake-claim-simulation.json` with the offline estimate and the simulated payout, and fails if the payout is below the estimate. Like the Meteora helper, it has no signing material, declines confirmation and disables submission.
 
 For native review with safe local fixtures, use a public wallet address already connected in the emulator. The fixture server cannot submit transactions and never forwards requests:
 
@@ -244,7 +285,7 @@ Open the existing debug APK through the normal Metro link. Verify positions, WSO
 Remove-Item Env:EXPO_PUBLIC_LIFEBOAT_TEST_RPC -ErrorAction SilentlyContinue
 ```
 
-Meteora is TS/JS only and needs no native dependency changes or prebuild. With a compatible debug APK, use Metro without rebuilding the APK; a standalone release requires a requested rebuild to include JS changes. Native checks on October 5, 2026 use the existing debug x86_64 APK and local Metro; no production build or real mainnet submission is required.
+Meteora (DLMM and DAMM v2) is TS/JS only and needs no native dependency changes or prebuild. The DAMM v2 reference and simulation scripts are `scripts/verify-meteora-damm-reference.mjs` (SDK in the ignored `.cache/meteora-damm-reference`) and `scripts/simulate-meteora-damm-mainnet.mjs` (unsigned; `DAMM_CAPTURE=1` refreshes `tests/fixtures/meteora-damm/mainnet.json`). With a compatible debug APK, use Metro without rebuilding the APK; a standalone release requires a requested rebuild to include JS changes. Native checks on October 5, 2026 use the existing debug x86_64 APK and local Metro; no production build or real mainnet submission is required.
 
 When rebuilding already verified code without changes, checking the build output, installation, and startup is sufficient. Repeat the full test suite for changes or new reasons to verify.
 
@@ -252,7 +293,7 @@ When rebuilding already verified code without changes, checking the build output
 
 Keep source, documentation, Expo configuration, scripts, `pnpm-lock.yaml`, `.env.example`, public interface JSON and deterministic/public test fixtures in Git. `android/` is generated; permanent native settings belong in Expo configuration, plugins or scripts.
 
-The root [`.gitignore`](../.gitignore) excludes dependencies, Expo/pnpm caches, `.cache/` diagnostic reports and screenshots, `dist/` exports, `artifacts/` APK copies, coverage, build logs, JVM heap dumps, local environment files, Android signing keys and IDE state. Device copies named `lifeboat-wallet.json`, `lifeboat-external-wallet.json`, `lifeboat-pending.json`, `lifeboat-meteora-operation.json` and `lifeboat-rpc.txt`, including staging/backup suffixes, are also excluded. These are private app records, not repository fixtures; external-wallet records contain authorization tokens and legacy wallet files may contain private keys.
+The root [`.gitignore`](../.gitignore) excludes dependencies, Expo/pnpm caches, `.cache/` diagnostic reports and screenshots, `dist/` exports, `artifacts/` APK copies, coverage, build logs, JVM heap dumps, local environment files, Android signing keys and IDE state. Device copies named `lifeboat-wallet.json`, `lifeboat-external-wallet.json`, `lifeboat-pending.json`, `lifeboat-meteora-operation.json`, `lifeboat-orca-operation.json` and `lifeboat-rpc.txt`, including staging/backup suffixes, are also excluded. These are private app records, not repository fixtures; external-wallet records contain authorization tokens and legacy wallet files may contain private keys.
 
 Check exclusions from the project root:
 

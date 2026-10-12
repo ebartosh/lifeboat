@@ -8,12 +8,12 @@
     "collateralMint": "94fVLm9PX7WM2zrqCCY1P69NY2Hj81B3LxtGRsUFskrL",
     "collateralVault": "F7CV629VXakovusXcg4DXRJFtYprh8HRmKagtT6PksV8",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -21,7 +21,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -130,12 +130,12 @@
     "collateralMint": "8uCVbHrv4RW6QRaWG95guL4eFBk1rkFq7zYzb9QKCVGm",
     "collateralVault": "78HxBCvtdPxqX2iWGxw5rryy4MTp6PZrW4q2aFPfxfLb",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -143,7 +143,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -485,12 +485,12 @@
     "collateralMint": "9YZeiTwWz6UVzLeJdrSGyLZY3iLVRRxDwsHQyoYBH8NG",
     "collateralVault": "54qDfnUQYJMmudA5TWY8ZpLT95pZ4h4ZrGzWghSeZb1e",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -498,7 +498,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -587,12 +587,12 @@
     "collateralMint": "3wVaxLYCKXoqVsxF2QRikYEFvhWGDXdc1BbVT4myZJzq",
     "collateralVault": "GdsQjiZ7o338Fs9HEikddYhqNNUq67eZLZLjsJ3aeJWz",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -600,7 +600,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -692,12 +692,12 @@
     "collateralMint": "3EEePyXDrxqyZgVGh6c4N52rdnbA4dVuTNCFu7yGA617",
     "collateralVault": "FuHetcCFnWo6CiH31f2jUWuVW5rWzMeocvLT2jwLCEKa",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -705,7 +705,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -766,12 +766,12 @@
     "collateralMint": "DY6irtAtWbU3Xn6Z5p2g9HSBBir5Q9D5MLh5CrtbJ9Fe",
     "collateralVault": "CrqN6VEbSdf3fTzkrrRWF4UWHMwB43Hq7NMHHZi7MBSP",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -779,7 +779,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -1063,12 +1063,12 @@
     "collateralMint": "5Fr7qCEhjcGRcGLqC8EGuifnPbo33pXnNt13zREyHTCx",
     "collateralVault": "69eXDLc9p6XQbPNiZx6A3fYoFa2YUX1dkxfYVuFo6bWM",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -1076,7 +1076,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -1116,12 +1116,12 @@
     "collateralMint": "ECGGPdi5XYSntQvdNtGQqbU8vJaZnhucgrMcGcAEx96Q",
     "collateralVault": "7eBNYWDTwNTH1v31f9AnYVV14HjCSYfJRh57xJrsWmbK",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -1129,7 +1129,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -1329,12 +1329,12 @@
     "collateralMint": "9MEnMKMFNhXg2Ut2WHbpu6CqnB5XmdSZC85oHFZzExhK",
     "collateralVault": "GamYYstwyacpNPhK7JfGFTpTNKw1U5sr1rv823Pb1ARC",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -1342,7 +1342,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -1427,12 +1427,12 @@
     "collateralMint": "B7gk3NA2pgjUzoWsURa31epTqfhvNHavMk5REEdRgTtE",
     "collateralVault": "HSUr1aRtzAA6LDCaE4uLTsT4uu4bHuKrkAxEJ9ux81Yj",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -1440,7 +1440,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   },
@@ -1453,12 +1453,12 @@
     "collateralMint": "7jsboNvtyxYAoyJ2kbfzPm3eFgN5rY2SKWovGvsyfX6F",
     "collateralVault": "34wTZDsFMqNLkNDS2ArqSDnBrBQNcEYsezEWJDTR34Yc",
     "repay": false,
-    "withdraw": false,
-    "repayReason": "unsupported reserve collateral restrictions",
-    "withdrawReason": "unsupported reserve collateral restrictions",
+    "withdraw": true,
+    "repayReason": "debt-side use not reviewed; elevation group 2 allows only WSOL debt",
+    "withdrawReason": null,
     "checks": {
-      "repayState": "unsupported reserve collateral restrictions",
-      "withdrawState": "unsupported reserve collateral restrictions",
+      "repayState": "reserve is usable as collateral only inside its elevation group (eMode)",
+      "withdrawState": null,
       "liquidity": null,
       "collateral": null,
       "debtFarm": null,
@@ -1466,7 +1466,7 @@
       "oracle": null
     },
     "restrictions": [
-      "disableUsageAsCollOutsideEmode=1 excluded"
+      "disableUsageAsCollOutsideEmode=1: collateral only inside elevation group 2"
     ],
     "availability": []
   }

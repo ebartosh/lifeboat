@@ -1,5 +1,5 @@
 ﻿import { VerificationError } from "../../core/errors";
-import type { ObligationLiquidity, Reserve, WithdrawalCaps } from "./state";
+import type { Obligation, ObligationLiquidity, Reserve, WithdrawalCaps } from "./state";
 
 export const SF = 1n << 60n;
 export const U64_MAX = (1n << 64n) - 1n;
@@ -46,3 +46,16 @@ export function remainingWithdrawalCap(cap: WithdrawalCaps, timestamp: bigint): 
   return remaining > 0n ? remaining : 0n;
 }
 
+// Ratios of the values KLend's refresh_obligation stored; nothing is revalued locally.
+// Permille ratios round toward risk: LTV up, limits and health down.
+export type PositionRisk = { ltvPermille: bigint; maxLtvPermille: bigint; liquidationLtvPermille: bigint; healthCenti: bigint };
+export function positionRisk(o: Obligation): PositionRisk | null {
+  const debt = o.borrowFactorAdjustedDebtValueSf, deposited = o.depositedValueSf;
+  if (debt === 0n || deposited === 0n) return null;
+  return {
+    ltvPermille: ceilDiv(debt * 1000n, deposited),
+    maxLtvPermille: o.allowedBorrowValueSf * 1000n / deposited,
+    liquidationLtvPermille: o.unhealthyBorrowValueSf * 1000n / deposited,
+    healthCenti: o.unhealthyBorrowValueSf * 100n / debt,
+  };
+}

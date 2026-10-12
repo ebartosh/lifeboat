@@ -4,6 +4,7 @@ import { executeSafeTransaction, type SafeTransactionOptions, type TransactionRe
 import { KaminoAdapter, type PositionStatus } from '../protocols/kamino/adapter';
 import { prepareOperation } from '../protocols/kamino/operations';
 import type { NativeSolEstimate } from '../protocols/kamino/native-sol';
+import type { PositionRisk } from '../protocols/kamino/math';
 
 // Pinned mainnet-beta genesis hash from Solana's ClusterType::MainnetBeta.
 export const MAINNET_GENESIS = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
@@ -12,7 +13,7 @@ export type KaminoRequest = { action: KaminoAction; position: Address; token: st
 export type KaminoReview = TransactionReview & {
   action: KaminoAction; position: Address; reserve: Address; token: string;
   amount: bigint; decimals: number; recipient: Address; createsAta: boolean;
-  nativeSol?: NativeSolEstimate;
+  nativeSol?: NativeSolEstimate; risk?: PositionRisk;
 };
 
 export function kaminoOperationHint(error: unknown): string {
@@ -22,6 +23,7 @@ export function kaminoOperationHint(error: unknown): string {
   if (/insufficient SOL|wrapping/i.test(message)) return 'Insufficient SOL for repayment, rent and fees. Add funds or reduce the amount.';
   if (/insufficient.*ATA|missing source ATA/i.test(message)) return 'Insufficient tokens in the wallet ATA. Add funds to cover interest or reduce the amount.';
   if (/Scope.*stale|stale.*Scope/i.test(message)) return 'The Scope price is stale. Refresh the position later; debt repayment may still be available.';
+  if (/new loans disabled/i.test(message)) return 'This eMode group has new loans disabled. Repay the debt before withdrawing collateral.';
   if (/maximum LTV/i.test(message)) return 'Repay part of the debt or reduce the withdrawal amount.';
   if (/liquidity|withdrawal cap/i.test(message)) return 'Reduce the withdrawal amount or wait for liquidity or the limit to recover.';
   if (/farm.*missing|farm initialization/i.test(message)) return 'The position requires a farm account, which the app does not create.';
@@ -64,6 +66,6 @@ export async function executeKamino(url: string, request: KaminoRequest, input: 
     confirm: review => input.confirm({ ...review, action: request.action, position: request.position,
       reserve: plan.reserve, token: plan.token, amount: plan.estimate, decimals: plan.decimals,
       recipient: plan.recipient, createsAta: plan.createsAta,
-      ...(plan.nativeSol ? { nativeSol: plan.nativeSol } : {}) }),
+      ...(plan.nativeSol ? { nativeSol: plan.nativeSol } : {}), ...(plan.risk ? { risk: plan.risk } : {}) }),
   });
 }

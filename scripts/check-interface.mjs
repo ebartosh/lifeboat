@@ -22,7 +22,7 @@ await build({ entryPoints: ['tests/ui/preview.jsx'], outfile: path.join(output, 
       : 'export const setStringAsync = async value => { window.copied = value; };' }));
   } }],
 });
-const faces = ['Mono-Regular','Mono-Medium','Serif-Regular','Serif-Medium'].map(name =>
+const faces = ['Mono-Regular','Mono-Medium','Mono-SemiBold','Serif-Regular','Serif-Medium'].map(name =>
   `@font-face{font-family:IBMPlex${name};src:url(/fonts/IBMPlex${name}.ttf)}`).join('');
 const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${faces}html,body,#root{height:100%;margin:0}#root{display:flex;flex-direction:column}*{box-sizing:border-box}</style><div id="root"></div><script src="/preview.js"></script></html>`;
 const server = createServer(async (req, res) => {
@@ -73,11 +73,14 @@ try {
       const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && (b.width < 48 || b.height < 48);
     }).map(el => el.textContent));
     assert.deepEqual(small, [], `${name}: targets under 48px`);
+    const clipped = await page.locator('[role="tab"]').evaluateAll(els =>
+      els.filter(el => el.scrollWidth > el.clientWidth + 1).map(el => el.textContent));
+    assert.deepEqual(clipped, [], `${name}: tab labels wider than their tabs`);
     await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
     results.push(name);
   }
   for (const scale of [1,1.3,2]) {
-    for (const scenario of ['no-wallet','ore','loading','empty','error','expired','kamino','review','wallet-review','wallet-check','wallet-check-busy','unknown','meteora','meteora-loading','meteora-empty','meteora-error','meteora-expired','meteora-review','meteora-wallet-review','meteora-partial','meteora-unknown','meteora-transfer-fees','meteora-transfer-fees-review']) {
+    for (const scenario of ['no-wallet','ore','loading','empty','error','expired','kamino','review','wallet-review','wallet-check','wallet-check-busy','unknown','meteora','meteora-loading','meteora-empty','meteora-error','meteora-expired','meteora-review','meteora-wallet-review','meteora-partial','meteora-unknown','meteora-transfer-fees','meteora-transfer-fees-review','orca','orca-loading','orca-empty','orca-error','orca-expired','orca-review','orca-wallet-review','orca-partial','orca-unknown','orca-transfer-fees','orca-transfer-fees-review','meteora-damm-only','meteora-damm-error','meteora-damm-review','meteora-damm-hold-review','meteora-damm-wallet-review','meteora-damm-unknown','meteora-damm-transfer-fees-review']) {
       await open(scenario, scale); await check(`${scenario}-360-${scale}`);
     }
   }
@@ -90,7 +93,7 @@ try {
   await page.getByText(/Transaction expired\. Nothing was sent/).waitFor();
   await page.getByText(/Check the details before approving/).waitFor();
   await page.getByRole('button',{name:'Close',exact:true}).click();
-  await page.getByRole('button',{name:'Operation details',exact:true}).click();
+  await page.getByRole('button',{name:'Info',exact:true}).click();
   await page.getByText(/without long pauses/).waitFor();
   await open('meteora-expired',2);
   await page.getByText(/This step expired before sending\. Confirmed steps are kept/).waitFor();
@@ -113,7 +116,7 @@ try {
   assert.deepEqual(await page.evaluate(()=>window.calls),[],'Meteora selection must not submit');
   await page.getByRole('button',{name:'Reverse order',exact:true}).click();
   assert.match(await page.getByRole('button',{name:/USDC \/ WSOL\. DLMM/}).textContent(),/^> USDC/);
-  await page.getByRole('button',{name:'Full details',exact:true}).click();
+  await page.getByRole('button',{name:'Details',exact:true}).click();
   await page.getByRole('button',{name:'Copy: Position',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.copied),'7YttLkHDoNj9wyDur5H7Myd5FWGaBMPLys5aeQ3dJKXS');
   await check('meteora-details');
@@ -127,6 +130,93 @@ try {
   await page.getByRole('button',{name:'Resume withdrawal',exact:true}).click();
   assert.deepEqual(await page.evaluate(()=>window.calls),['resume']);
   await check('meteora-resume-2');
+  for (const scale of [1, 2]) {
+    await open('meteora-partial', scale);
+    await page.getByRole('button',{name:'Close',exact:true}).click();
+    await page.getByText(/^Withdrawal incomplete\s+Meteora · Withdraw all · \d+ steps? confirmed$/).waitFor();
+    await page.getByText('Other actions are blocked until this operation is finished.',{exact:true}).waitFor();
+    const status = await page.getByRole('heading',{name:'Operation · Status',exact:true}).boundingBox();
+    const entries = await page.getByRole('heading',{name:/^Meteora · /}).first().boundingBox();
+    assert.ok(status.y < entries.y, 'A blocking operation is shown above the positions');
+    await check(`meteora-partial-dismissed-${scale}`);
+    await page.getByRole('button',{name:'Resume withdrawal',exact:true}).click();
+    assert.deepEqual(await page.evaluate(()=>window.calls),['resume']);
+  }
+  await open('meteora-damm-only');
+  await page.getByRole('button',{name:/^USDC \/ WSOL\. DAMM v2 · 7Ytt…JKXT\. ≈[\d.,]+ USDC, ≈[\d.,]+ WSOL$/}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),[],'DAMM v2 selection must not submit');
+  await page.getByText(/It is one transaction\./).waitFor();
+  await page.getByRole('button',{name:'Withdraw all',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['damm:7YttLkHDoNj9wyDur5H7Myd5FWGaBMPLys5aeQ3dJKXT']);
+  await open('meteora-damm-only');
+  await page.getByRole('button',{name:/^USDC \/ WSOL\. DAMM v2 · 1111…1113\. ≈.+\. Vesting$/}).click();
+  await page.getByText(/^The position stays open after the withdrawal\. Some liquidity is still vesting/).waitFor();
+  await page.getByText('Permanently locked',{exact:true}).waitFor();
+  await check('meteora-damm-locked');
+  await page.getByRole('button',{name:/^USDC \/ WSOL\. DAMM v2 · 1111…1114\. Vesting$/}).click();
+  await page.getByText(/^Some liquidity is still vesting; more unlocks at 2026-11-01/).first().waitFor();
+  assert.equal(await page.getByRole('button',{name:'Withdraw all',exact:true}).isDisabled(),true);
+  await check('meteora-damm-vesting');
+  await page.getByRole('button',{name:/^Unavailable position\. DAMM v2/}).click();
+  await page.getByText(/Restriction: Meteora DAMM v2: Pool is missing/).first().waitFor();
+  assert.equal(await page.getByRole('button',{name:'Withdraw all',exact:true}).isDisabled(),true);
+  for (const scale of [1, 2]) {
+    await open('meteora-damm-review', scale);
+    await page.getByText('Meteora DAMM v2 · Withdraw all',{exact:true}).first().waitFor();
+    assert.equal(await page.getByText(/step \d+ of/).count(),0,'A one-transaction withdrawal shows no step count');
+    for (const action of ['Release matured vesting','Claim fees','Remove all unlocked liquidity','Claim reward 1','Close position and burn its NFT'])
+      await page.getByText(action,{exact:true}).waitFor();
+    await check(`meteora-damm-review-actions-${scale}`);
+  }
+  await open('meteora-damm-hold-review',2);
+  await page.getByText('Forfeit reward 2 (frozen vault)',{exact:true}).waitFor();
+  await page.getByText(/reward vault is frozen\. Its pending reward is forfeited/).waitFor();
+  await page.getByText(/^The position stays open\. Some liquidity is still vesting/).waitFor();
+  await check('meteora-damm-hold-review-notes-2');
+  await open('meteora-damm-review');
+  await page.getByRole('button',{name:'Sign and send',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),[true]);
+  await open('meteora-damm-unknown');
+  assert.equal(await page.getByRole('button',{name:'Resume withdrawal',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Check status',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['check']);
+  await open('meteora-damm-error');
+  await page.getByText(/^Error: Could not read Meteora DAMM v2 positions\. Check the mainnet-beta RPC and refresh\.$/).waitFor();
+  await page.getByRole('button',{name:/USDC \/ WSOL\. DLMM/}).click();
+  assert.equal(await page.getByRole('button',{name:'Withdraw all',exact:true}).isDisabled(),false,'A DAMM v2 read error does not block DLMM');
+  await open('orca',1,900); await check('orca-wide');
+  await open('orca');
+  await page.getByRole('button',{name:/USDC \/ WSOL\. Whirlpool/}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),[],'Orca selection must not submit');
+  await page.getByRole('button',{name:'Details',exact:true}).click();
+  await page.getByRole('button',{name:'Copy: Position NFT',exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.copied),'7YttLkHDoNj9wyDur5H7Myd5FWGaBMPLys5aeQ3dJKXS');
+  await check('orca-details');
+  await page.getByRole('button',{name:'Back',exact:true}).click();
+  await page.getByRole('button',{name:/Position bundle\. Whirlpool/}).click();
+  await page.getByText(/bundles are unsupported/).first().waitFor();
+  assert.equal(await page.getByRole('button',{name:'Withdraw all',exact:true}).isDisabled(),true);
+  await page.getByRole('button',{name:/USDC \/ WSOL\. Whirlpool/}).click();
+  await page.getByRole('button',{name:'Withdraw all',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['7YttLkHDoNj9wyDur5H7Myd5FWGaBMPLys5aeQ3dJKXS']);
+  await open('orca-review',2);
+  await page.getByText(/closes in a later step/).waitFor();
+  await page.getByText(/not estimated: a tick array uses a format/).waitFor();
+  await check('orca-review-notes-2');
+  await open('orca-single-review');
+  await page.getByText('Close empty position and burn its NFT',{exact:true}).waitFor();
+  assert.equal(await page.getByText(/step \d+ of/).count(),0,'A one-transaction withdrawal shows no step count');
+  await check('orca-single-review');
+  await open('orca-review');
+  await page.getByText('Orca · Withdraw all · step 2 of ≈3',{exact:true}).waitFor();
+  await open('orca-partial',2);
+  await page.getByRole('button',{name:'Close',exact:true}).click();
+  await page.getByText(/^Withdrawal incomplete\s+Orca · Withdraw all · 1 step confirmed$/).waitFor();
+  await page.getByRole('button',{name:'Resume withdrawal',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['resume']);
+  await open('orca-unknown');
+  await page.getByRole('button',{name:'Check status',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.calls),['check']);
   await open('meteora-review',2);
   await page.getByRole('button',{name:'Sign and send',exact:true}).click();
   assert.deepEqual(await page.evaluate(()=>window.calls),[true]);
@@ -142,23 +232,29 @@ try {
   assert.equal(await page.getByRole('button', { name: 'Refresh', exact: true }).isDisabled(), true);
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
-    await page.getByText('External wallet connected.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Wallet details', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Wallet details', exact: true }).click();
     await page.getByRole('button', { name: 'Disconnect wallet', exact: true }).click();
     await page.getByText('Wallet not connected', { exact: true }).waitFor();
   }
   assert.deepEqual(await page.evaluate(() => window.walletCalls), ['connect','disconnect','connect','disconnect']);
   await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
-  await page.getByText('External wallet connected.', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Wallet details', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
+  assert.equal(await page.getByText(/wallet connected/i).count(), 0, 'The header address already shows the connection');
   assert.equal(await page.getByRole('button', { name: 'Switch wallet', exact: true }).count(), 0);
   const walletButton = await page.getByRole('button', { name: 'Wallet details', exact: true }).boundingBox();
   const refreshButton = await page.getByRole('button', { name: 'Refresh', exact: true }).boundingBox();
-  const title = await page.getByText('Lifeboat', { exact: true }).first().boundingBox();
-  assert.ok(walletButton.x > title.x && refreshButton.x > walletButton.x, 'Wallet and refresh commands belong at the upper right');
+  // The offline fixture rejects every RPC request, so the startup ping reports an unreachable RPC.
+  const rpcStatus = await page.getByLabel('RPC: unreachable', { exact: true }).boundingBox();
+  await page.getByText(/^Error: Could not reach the RPC/).waitFor();
+  assert.equal(await page.getByRole('heading', { name: 'Lifeboat', exact: true }).count(), 1);
+  assert.ok(walletButton.x > rpcStatus.x && refreshButton.x > walletButton.x, 'Wallet and refresh commands belong at the upper right');
   assert.equal(walletButton.y, refreshButton.y, 'Refresh must be next to the wallet command');
-  assert.ok(walletButton.y < title.y + title.height, 'Commands must share the masthead at normal text size');
-  assert.equal((await page.getByRole('button', { name: 'Refresh', exact: true }).textContent()).trim(), '↻');
+  assert.ok(Math.abs(walletButton.y + walletButton.height / 2 - (rpcStatus.y + rpcStatus.height / 2)) < 2,
+    'Commands must share the RPC status line at normal text size');
+  assert.match((await page.getByRole('button', { name: 'Refresh', exact: true }).textContent()).replace(/\s/g, ''), /^\[↻\]$/);
+  assert.equal((await page.getByRole('button', { name: 'Wallet details', exact: true }).textContent()).trim(), '[ 7Ytt…JKXS ]');
   let rpcRequests = 0;
   const countRpc = request => { if (request.url().startsWith('https://api.mainnet.solana.com')) rpcRequests++; };
   page.on('request', countRpc);
@@ -172,21 +268,32 @@ try {
   await page.getByRole('button', { name: 'Switch wallet', exact: true }).click();
   await page.getByText(/Could not connect the wallet/).waitFor();
   await page.getByRole('button', { name: 'Wallet details', exact: true }).click();
-  await page.getByText('External wallet', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Copy: Address', exact: true }).waitFor();
+  assert.equal(await page.getByText('External wallet', { exact: true }).count(), 0);
   assert.equal(await page.getByText(/Import JSON|Local key|Delete local key|Key saved on device/).count(), 0);
   assert.deepEqual(await page.evaluate(() => window.walletCalls), ['connect','disconnect','connect','disconnect','connect','connect']);
   await check('external-wallet-details');
   for (const scale of [1, 1.3, 2]) {
     await open('no-wallet', scale);
     await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
-    await page.getByText('External wallet connected.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Wallet details', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
+    if (scale === 2) {
+      // Enlarged text: RPC and refresh share the first line, the wallet moves below; tabs stack.
+      const refresh = await page.getByRole('button', { name: 'Refresh', exact: true }).boundingBox();
+      const walletLine = await page.getByRole('button', { name: 'Wallet details', exact: true }).boundingBox();
+      assert.ok(walletLine.y >= refresh.y + refresh.height - 1, 'At 2× the wallet command moves below refresh');
+      assert.ok(Math.abs(walletLine.x + walletLine.width - refresh.x - refresh.width) < 2,
+        `At 2× the wallet line stays right-aligned: wallet ${JSON.stringify(walletLine)}, refresh ${JSON.stringify(refresh)}`);
+      const [first, second] = await page.getByRole('tab').evaluateAll(els => els.map(el => el.getBoundingClientRect().y));
+      assert.ok(second > first, 'At 2× the protocol tabs stack');
+    }
     await check(`app-connected-header-360-${scale}`);
   }
   await open('ore');
   await page.getByRole('button', { name: 'ORE rewards. Rewards.' }).click();
   assert.deepEqual(await page.evaluate(() => window.calls), [], 'Selection must not run an operation');
-  await page.getByRole('button', { name: 'Full details', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await page.getByRole('button', { name: 'Copy: Miner', exact: true }).click();
   assert.equal(await page.evaluate(() => window.copied), '7YttLkHDoNj9wyDur5H7Myd5FWGaBMPLys5aeQ3dJKXS');
   await check('ore-details');
@@ -199,6 +306,12 @@ try {
   await page.getByRole('button', { name: 'Prepare ORE withdrawal', exact: true }).click();
   assert.deepEqual(await page.evaluate(() => window.calls), ['0.00000000001']);
   await open('kamino');
+  await page.getByRole('button', { name: /Debt USDC\. Recheck/ }).click();
+  await page.getByRole('button', { name: 'Repay USDC', exact: true }).click();
+  await page.getByRole('button', { name: 'Wallet balance', exact: true }).click();
+  assert.equal(await page.getByLabel('Amount, USDC', { exact: true }).inputValue(), 'balance');
+  await check('kamino-balance');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: /Debt SOL\. Recheck/ }).click();
   await page.getByRole('button', { name: 'Reverse order', exact: true }).click();
   assert.match(await page.getByRole('button', { name: /Debt SOL\. Recheck/ }).textContent(), /^> Debt SOL/);
@@ -208,6 +321,10 @@ try {
   assert.deepEqual(await page.evaluate(() => window.calls), []);
   await page.getByText(/Error: Enter a positive/).waitFor();
   await page.getByLabel('Amount, SOL', { exact: true }).fill('all');
+  assert.equal(await page.getByRole('button', { name: 'Wallet balance', exact: true }).count(), 0);
+  await page.getByLabel('Amount, SOL', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Full debt', exact: true }).click();
+  assert.equal(await page.getByLabel('Amount, SOL', { exact: true }).inputValue(), 'all');
   await check('kamino-input');
   await page.getByRole('button', { name: 'Prepare operation', exact: true }).click();
   const requests = await page.evaluate(() => window.calls);

@@ -6,7 +6,7 @@ import idl from "./klend.idl.json" with { type: "json" };
 import metadata from "./metadata.json" with { type: "json" };
 import manifest from "./manifest.json" with { type: "json" };
 import { ATA, CLOCK, FARMS, SCOPE, SYSVAR, TOKEN, ZERO, check, decode, mintState, support, tokenState, verifyOracle, verifyProgram, type ClockState } from "./accounts";
-import type { LendingMarket, Obligation, Reserve, ReferrerTokenState } from "./state";
+import type { ElevationGroup, LendingMarket, Obligation, Reserve, ReferrerTokenState } from "./state";
 
 export type TokenDefinition = (typeof metadata.tokens)[number];
 export type ReserveState = { address: Address; state: Reserve; token: TokenDefinition | undefined; oracleAgeSeconds: bigint | null; oracleFresh: boolean | null };
@@ -19,6 +19,7 @@ export type Position = {
 };
 export type PositionStatus = { address: Address; position?: Position; reason?: string; repayments?: { token: string; reserve?: string; reason?: string }[] };
 export const WSOL_MINT = "So11111111111111111111111111111111111111112";
+export const MULTIPLY_TAG = 1n;
 export const deposits = (o: Obligation) => o.deposits.filter(x => x.depositReserve !== ZERO);
 export const borrows = (o: Obligation) => o.borrows.filter(x => x.borrowReserve !== ZERO);
 
@@ -119,7 +120,8 @@ export class KaminoAdapter {
 
   validateObligation(o: Obligation, wallet: Address, repayment?: RepaymentDependencies): void {
     check(o.owner === wallet && o.lendingMarket === this.marketAddress, "obligation owner or supported market mismatch");
-    check(o.tag === 0n && o.elevationGroup === 0, "only vanilla positions outside elevation groups are supported");
+    // The tag only seeds the obligation PDA; repay, withdraw and refresh never read it.
+    check(o.tag === 0n || o.tag === MULTIPLY_TAG, "only vanilla (tag 0) and Multiply (tag 1) positions are supported");
     check(o.ownershipTransferState === 0 && o.pendingOwner === ZERO, "ownership transfer is unsupported");
     check(o.autodeleverageTargetLtvPct === 0 && o.autodeleverageMarginCallStartedTimestamp === 0n, "position is in autodeleverage mode");
     check(o.obligationOrders.every(x => x.conditionType === 0 && x.opportunityType === 0)
@@ -135,10 +137,30 @@ export class KaminoAdapter {
       && x.fixedTermBorrowRolloverConfig.migrationToFixedEnabled === 0 && x.borrowedAmountAtExpiration === 0n), "fixed-term rollover positions are unsupported");
   }
 
+  // KLend replaces every collateral LTV with the group's and allows only the
+  // group's debt reserve as a borrow (lending_operations.rs at the pinned commit).
+  elevationGroup(o: Obligation, market: LendingMarket): ElevationGroup | undefined {
+    if (o.elevationGroup === 0) return undefined;
+    const group = market.elevationGroups[o.elevationGroup - 1];
+    check(group && group.id === o.elevationGroup && group.ltvPct > 0 && group.ltvPct <= group.liquidationThresholdPct
+      && group.liquidationThresholdPct <= 100 && group.debtReserve !== ZERO, "invalid position elevation group (eMode) configuration");
+    return group;
+  }
+
+  validateElevationGroup(o: Obligation, market: LendingMarket, reserves: Map<Address, { state: Reserve }>): void {
+    const group = this.elevationGroup(o, market);
+    if (!group) return;
+    check(borrows(o).every(b => b.borrowReserve === group.debtReserve) && deposits(o).every(d => d.depositReserve !== group.debtReserve),
+      "position legs do not match its elevation group (eMode) debt reserve");
+    for (const key of [...deposits(o).map(d => d.depositReserve), ...borrows(o).map(b => b.borrowReserve)]) {
+      check(reserves.get(key)?.state.config.elevationGroups.includes(group.id), "position reserve is outside its elevation group (eMode)");
+    }
+  }
+
   // A collateral-only reserve is a refresh dependency, never a transfer target.
   validatePositionReserve(r: Reserve, key: Address, obligation: Obligation, repayment?: RepaymentDependencies): TokenDefinition | undefined {
     if (!repayment || key === repayment.reserve || borrows(obligation).some(b => b.borrowReserve === key)) {
-      return this.validateReserve(r, key, !repayment);
+      return this.validateReserve(r, key, !repayment, obligation.elevationGroup);
     }
     check(deposits(obligation).some(d => d.depositReserve === key), "reserve is not linked collateral");
     check(r.lendingMarket === this.marketAddress && r.version === 1n, "collateral reserve market/version mismatch");
@@ -157,7 +179,7 @@ export class KaminoAdapter {
     return token;
   }
 
-  validateReserve(r: Reserve, key: Address, requirePrices = true): TokenDefinition {
+  validateReserve(r: Reserve, key: Address, requirePrices = true, elevationGroup = 0): TokenDefinition {
     const token = metadata.tokens.find(t => t.reserve === key);
     check(token && r.lendingMarket === this.marketAddress && r.version === 1n, "reserve market/version mismatch");
     check(requirePrices ? token.withdraw : token.repay, "reserve operation is outside the bundled support matrix");
@@ -169,7 +191,9 @@ export class KaminoAdapter {
     const c = r.config, i = c.tokenInfo;
     check(c.status === 0 && c.emergencyMode === 0 && c.permissionedOps === 0n, "inactive/emergency/permissioned reserve is unsupported");
     check(c.debtTermSeconds === 0n && c.debtMaturityTimestamp === 0n && c.earlyRepayRemainingInterestPct === 0, "fixed-term reserves are unsupported");
-    check(c.autodeleverageEnabled === 0 && c.disableUsageAsCollOutsideEmode === 0, "unsupported reserve collateral restrictions");
+    check(c.autodeleverageEnabled === 0, "unsupported reserve collateral restrictions");
+    check(c.disableUsageAsCollOutsideEmode === 0 || (elevationGroup !== 0 && c.elevationGroups.includes(elevationGroup)),
+      "reserve is usable as collateral only inside its elevation group (eMode)");
     check(r.withdrawQueue.queuedCollateralAmount === 0n, "queued withdrawals are unsupported");
     check(c.loanToValuePct <= 100 && c.liquidationThresholdPct <= 100 && c.borrowFactorPct >= 100n, "invalid risk configuration");
     if (requirePrices) {
@@ -212,6 +236,7 @@ export class KaminoAdapter {
       this.validatePositionReserve(r, key, state, position.repayment);
       this.validateReserveDependencies(position, key, r);
     }
+    this.validateElevationGroup(state, position.market, reserves);
   }
 
   async loadPosition(reader: LendingReader, wallet: Address, key: Address, minSlot?: bigint, options: PositionLoadOptions = {}): Promise<Position> {
@@ -299,6 +324,7 @@ export class KaminoAdapter {
       }
       reserves.set(reserveKey, { address: reserveKey, state: reserve, token, oracleAgeSeconds: oracle.ageSeconds, oracleFresh: oracle.fresh });
     }
+    this.validateElevationGroup(state, market, reserves);
     return { address: key, wallet, state, market, slot: final.slot, clock, reserves, accounts, ...(repayment ? { repayment } : {}) };
   }
 

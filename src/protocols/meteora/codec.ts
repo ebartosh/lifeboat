@@ -1,5 +1,6 @@
-import { address, getAddressDecoder, type Address } from '@solana/kit';
+import { address, type Address } from '@solana/kit';
 import type { ChainAccount } from '../../core/accounts';
+import { createIdlDecoder } from '../../core/anchor-idl';
 import { VerificationError } from '../../core/errors';
 import idl from './dlmm.idl.json';
 import { decodeTokenAccount, decodeTokenMint, TOKEN_PROGRAM, TOKEN_2022_PROGRAM, ASSOCIATED_TOKEN_PROGRAM } from '../../core/tokens';
@@ -23,34 +24,7 @@ export function isClosedAccount(account: ChainAccount | null | undefined) {
   return account === null || (!!account && account.owner === ZERO && account.lamports === 0n
     && !account.executable && account.data.length === 0);
 }
-type FieldType = string | { array: [FieldType, number] } | { defined: { name: string } };
-type Field = { name: string; type: FieldType };
-const definitions = new Map((idl.types as unknown as { name: string; type: { fields?: Field[] } }[])
-  .filter(item => item.type.fields).map(item => [item.name, item.type.fields!]));
-// Anchor's IDL includes explicit padding for all bundled zero-copy types. Decode
-// sequentially like its Borsh coder; never apply host ABI alignment to u128.
-function read(data: Uint8Array, cursor: { offset: number }, type: FieldType): unknown {
-  if (typeof type !== 'string') {
-    if ('array' in type) return Array.from({ length: type.array[1] }, () => read(data, cursor, type.array[0]));
-    return readStruct(data, cursor, type.defined.name);
-  }
-  const size = type === 'pubkey' ? 32 : ({ u8: 1, u16: 2, u32: 4, i32: 4, u64: 8, i64: 8, u128: 16 } as Record<string, number>)[type];
-  check(size !== undefined && cursor.offset + size <= data.length, 'truncated or unknown IDL field');
-  const offset = cursor.offset; cursor.offset += size;
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-  if (type === 'pubkey') return getAddressDecoder().decode(data.subarray(offset, offset + 32));
-  if (type === 'u8') return data[offset];
-  if (type === 'u16') return view.getUint16(offset, true);
-  if (type === 'u32') return view.getUint32(offset, true);
-  if (type === 'i32') return view.getInt32(offset, true);
-  if (type === 'i64') return view.getBigInt64(offset, true);
-  if (type === 'u128') return view.getBigUint64(offset, true) | view.getBigUint64(offset + 8, true) << 64n;
-  return view.getBigUint64(offset, true);
-}
-function readStruct(data: Uint8Array, cursor: { offset: number }, name: string): Record<string, unknown> {
-  const fields = definitions.get(name); check(fields, `unknown IDL type ${name}`);
-  return Object.fromEntries(fields.map(field => [field.name, read(data, cursor, field.type)]));
-}
+const { readStruct } = createIdlDecoder(idl.types as unknown as Parameters<typeof createIdlDecoder>[0], check);
 export function discriminator(name: string): readonly number[] {
   const definition = idl.accounts.find(item => item.name === name);
   check(definition, `unknown account ${name}`); return definition.discriminator;

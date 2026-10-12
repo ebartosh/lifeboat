@@ -45,7 +45,7 @@ function font(file: string) {
   return { glyph, width: (char: string) => data.readUInt16BE(tables.get('hmtx')! + Math.min(glyph(char.charCodeAt(0)), metricCount - 1) * 4) };
 }
 describe('bundled interface fonts', () => {
-  for (const family of ['Mono', 'Serif']) for (const weight of ['Regular', 'Medium']) {
+  for (const [family, weights] of [['Mono', ['Regular', 'Medium', 'SemiBold']], ['Serif', ['Regular', 'Medium']]] as const) for (const weight of weights) {
     it(`${family} ${weight}: English, technical symbols, distinguishable glyphs and OFL`, () => {
       const parsed = font(`IBMPlex${family}-${weight}`);
       const required = '≈…>0123456789ORE/SOL.,:- ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -72,8 +72,19 @@ it('keeps actual text and control colors above the required contrast', () => {
     return (values[0]! + 0.05) / (values[1]! + 0.05);
   };
   for (const [text, background] of [['navy','white'], ['blue','white'], ['navy','softOrange'],
-    ['navy','lightBlue'], ['ink','orange'], ['navy','surface'], ['danger','white']]) {
+    ['navy','lightBlue'], ['ink','orange'], ['navy','surface'], ['danger','white'],
+    // Highlight groups must stay readable on white, on the selected row and on informational fills.
+    ['secondary','white'], ['secondary','lightBlue'], ['header','white'], ['token','white'], ['token','softOrange'],
+    ['address','white'], ['address','softOrange'], ['ok','white'], ['ok','softOrange'], ['ok','lightBlue'],
+    ['danger','softOrange'], ['danger','lightBlue'], ['hotkey','white'], ['hotkey','lightBlue'],
+    // Command bands: pressed primary action and disabled labels stay readable.
+    ['ink','pressedOrange'], ['secondary','disabledFill']]) {
     expect(contrast(text!, background!), `${text}/${background}`).toBeGreaterThanOrEqual(4.5);
   }
-  for (const background of ['white','orange','surface']) expect(contrast('navy',background)).toBeGreaterThanOrEqual(3);
+  // Bracketed commands are identified by their text, so bands need no 3:1 edge. Non-text marks still do:
+  // input borders, the refresh icon and the RPC status marks.
+  for (const [mark, background] of [['navy','white'], ['navy','surface'], ['blue','white'], ['secondary','white'],
+    ['ok','white'], ['danger','white']]) {
+    expect(contrast(mark!, background!), `${mark}/${background}`).toBeGreaterThanOrEqual(3);
+  }
 });

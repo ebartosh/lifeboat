@@ -6,9 +6,11 @@ The shared layer derives program-specific ATAs, constructs CreateIdempotent with
 
 All token amounts and fees use bigint. `transferAmounts` returns grossAmount, transferFee and netAmount separately and checks u64 inputs. Epochs before the newer schedule activate the older fee; at and after the newer epoch, the newer fee applies. A fee is the smaller of the ceiling-rounded basis-point fee and maximumFee. Zero amounts have zero fees. Each instruction transfer gets its own rounding and cap. `amount` in Meteora receipts means netAmount; aggregated receipt totals may span several transfers.
 
-## Meteora policy
+Display symbols are read on-chain only: the Token-2022 TokenMetadata extension in the mint, otherwise the Metaplex metadata PDA (`["metadata", metaqbxx…518x1s, mint]`), whose name and symbol are account fields. The metadata URI is never fetched. Adapters add the metadata PDAs to the batched read that already loads the mints, so no RPC round trip is added. Symbols are labels and never gate an operation: missing, malformed, over-long, or control/bidirectional-character symbols fall back to the abbreviated mint. WSOL, USDC and ORCA keep fixed labels by mint, and another mint claiming SOL or one of those symbols shows its abbreviated address instead.
 
-`src/protocols/meteora/token-policy.ts` admits exactly these extensions:
+## Meteora and Orca policy
+
+The receipt-token policy lives in `src/core/token-policy.ts` and is shared by Meteora DLMM (`src/protocols/meteora/token-policy.ts`) and Orca Whirlpools (`src/protocols/orca/token-policy.ts`); only the protocol name in messages differs. It admits exactly these extensions:
 
 | Account kind | Allowed extensions |
 | --- | --- |
@@ -19,6 +21,10 @@ TransferFeeAmount must be present exactly when the mint has TransferFeeConfig. V
 
 Meteora discovers mint programs before deriving ATAs, then validates the same programs in its final monotonic account snapshot. Pool flags must match verified mint owners. Reward programs are determined independently. Missing ATA rent is deduplicated by ATA and queried by required size. Simulation verifies each gross vault debit against the epoch-specific net wallet credit and withheld-fee increase. Withheld vault fees cannot be reduced. Mint bytes cannot change, and the returned Clock must be valid with a nondecreasing epoch. Fee-only, reward-only, empty, multi-range and recovered withdrawals use the same rules. Durable operation records still store only identities, steps and signatures; restart derives fees and programs from fresh verified accounts.
 
+## Meteora DAMM v2 policy
+
+DAMM v2 does not use the shared allowlist. Its program admits mints through permissionless checks or operator token badges, and Lifeboat measures receipts by simulation instead of predicting them, so an extension cannot change what the review reports. Only an active transfer hook is refused, because the program transfers without the hook's accounts and the transaction would always fail. Recipient accounts are matched by mint and owner; transfer fees are the withheld increase of the wallet's account. ATA rent is measured from the accounts the simulation creates (for WSOL, the native account's rent-exempt reserve). See [DAMM v2 operations](meteora-damm-operations.md#supported-tokens).
+
 ## Pinned official references
 
 The official Rust interface and processor were inspected at [solana-program/token-2022 commit 1436a91674fb3679e6473661f5f1e6a6b41f093d](https://github.com/solana-program/token-2022/tree/1436a91674fb3679e6473661f5f1e6a6b41f093d). Relevant files are `interface/src/extension/mod.rs` (TLV and required extensions), `interface/src/extension/transfer_fee/mod.rs` (epoch schedules, ceiling rounding and caps), and `program/src/processor.rs` (source gross debit, destination net credit and separate withheld amount). These pinned source references do not establish the hash of a deployed Solana binary.
@@ -27,6 +33,6 @@ The independent clients are **@solana/spl-token 0.4.15** and **@meteora-ag/dlmm 
 
 ## Future Kamino integration
 
-Kamino remains limited to its existing classic SPL reserves and vanilla obligations. Its SPL support codecs and operation builders are unchanged. The reusable foundation is mint-program verification, strict token decoding, extension capabilities, ATA construction/allocation/rent, and gross/fee/net arithmetic. Debt, interest, LTV, collateral, reserve permissions and repay-all rules remain in Kamino.
+Kamino remains limited to its existing classic SPL reserves and vanilla and Multiply obligations (including elevation groups). Its SPL support codecs and operation builders are unchanged. The reusable foundation is mint-program verification, strict token decoding, extension capabilities, ATA construction/allocation/rent, and gross/fee/net arithmetic. Debt, interest, LTV, collateral, reserve permissions and repay-all rules remain in Kamino.
 
 A separate integration must verify the chosen KLend source and live reserve token-program fields, liquidity and collateral mint/vault layouts, CPI instruction accounts and extension allowlists; repay debits versus the net liquidity received by a reserve; exact debt cancellation and fee gross-up for repay-all; collateral redemption amounts, rounding and net user receipts; withheld vault fees versus usable reserve liquidity; refresh/oracle/farms/referrer compatibility; epoch changes during preparation and recovery; and unsigned BPF simulation with independent KLend references. Meteora compatibility provides no permission to enable any Kamino Token-2022 reserve or obligation type.

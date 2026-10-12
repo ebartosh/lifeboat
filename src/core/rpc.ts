@@ -12,6 +12,7 @@ import {
 
 import { ConfigurationError, errorMessage, TransactionError } from "./errors";
 import type { AccountFilter, AccountSnapshot, ChainAccount, LendingReader } from "./accounts";
+import type { ConfirmedTransaction, ReceiptRpc } from "./receipt";
 
 export type LatestBlockhash = {
   blockhash: Blockhash;
@@ -40,7 +41,7 @@ export interface TransactionRpc {
   getBlockHeight(): Promise<bigint>;
 }
 
-export class SolanaRpcClient implements TransactionRpc, LendingReader {
+export class SolanaRpcClient implements TransactionRpc, LendingReader, ReceiptRpc {
   private readonly rpc: ReturnType<typeof createSolanaRpc>;
 
   private async request<T>(request: { send(options: { abortSignal: AbortSignal }): Promise<T> }): Promise<T> {
@@ -93,7 +94,7 @@ export class SolanaRpcClient implements TransactionRpc, LendingReader {
       }))],
     }));
     return { slot: response.context.slot, accounts: response.value.map(item => ({
-      address: item.pubkey, account: { owner: item.account.owner, executable: item.account.executable,
+      address: item.pubkey, account: { lamports: item.account.lamports, owner: item.account.owner, executable: item.account.executable,
         data: Uint8Array.from(getBase64Encoder().encode(item.account.data[0])),
       },
     })) };
@@ -109,6 +110,17 @@ export class SolanaRpcClient implements TransactionRpc, LendingReader {
       commitment: 'confirmed', encoding: 'base64', withContext: true,
       filters: filters.map(filter => ({ memcmp: { offset: BigInt(filter.offset),
         bytes: filter.bytes as Address, encoding: 'base58' as const } })),
+    }));
+    return { slot: response.context.slot, accounts: response.value.map(item => ({
+      address: item.pubkey, account: { lamports: item.account.lamports, owner: item.account.owner,
+        executable: item.account.executable, data: Uint8Array.from(getBase64Encoder().encode(item.account.data[0])) },
+    })) };
+  }
+
+  /** Token accounts owned by `owner`, filtered by token program or by mint. */
+  async getTokenAccountsByOwner(owner: Address, filter: { programId: Address } | { mint: Address }, minContextSlot?: bigint) {
+    const response = await this.request(this.rpc.getTokenAccountsByOwner(owner, filter, {
+      commitment: 'confirmed', encoding: 'base64', ...(minContextSlot === undefined ? {} : { minContextSlot }),
     }));
     return { slot: response.context.slot, accounts: response.value.map(item => ({
       address: item.pubkey, account: { lamports: item.account.lamports, owner: item.account.owner,
@@ -178,6 +190,22 @@ export class SolanaRpcClient implements TransactionRpc, LendingReader {
     const status = response.value[0];
     if (status === null || status === undefined) return null;
     return { confirmationStatus: status.confirmationStatus, error: status.err, slot: status.slot };
+  }
+
+  async getConfirmedTransaction(transactionSignature: Signature): Promise<ConfirmedTransaction | null> {
+    const response = await this.request(this.rpc.getTransaction(transactionSignature,
+      { commitment: "confirmed", encoding: "json", maxSupportedTransactionVersion: 0 }));
+    if (response === null || response.meta === null) return null;
+    const meta = response.meta;
+    const tokenBalances = (balances: typeof meta.preTokenBalances) => (balances ?? []).map(balance => ({
+      accountIndex: balance.accountIndex, mint: balance.mint, ...(balance.owner === undefined ? {} : { owner: balance.owner }),
+      amount: BigInt(balance.uiTokenAmount.amount), decimals: balance.uiTokenAmount.decimals,
+    }));
+    return { error: meta.err, feeLamports: meta.fee,
+      // Lifeboat sends legacy transactions; loaded addresses only extend v0 account lists.
+      accountKeys: [...response.transaction.message.accountKeys, ...meta.loadedAddresses?.writable ?? [], ...meta.loadedAddresses?.readonly ?? []],
+      preBalances: meta.preBalances, postBalances: meta.postBalances,
+      preTokenBalances: tokenBalances(meta.preTokenBalances), postTokenBalances: tokenBalances(meta.postTokenBalances) };
   }
 
   async getBlockHeight(): Promise<bigint> {

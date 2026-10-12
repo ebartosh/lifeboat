@@ -1,0 +1,2 @@
+# Bundled upstream IDLs are pinned by SHA-256; keep their bytes exact on every platform.
+*.idl.json -text

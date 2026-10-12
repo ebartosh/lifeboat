@@ -1,5 +1,6 @@
 import {
   appendTransactionMessageInstructions,
+  blockhash as toBlockhash,
   getTransactionEncoder,
   getTransactionDecoder,
   compileTransaction,
@@ -17,7 +18,7 @@ import {
 } from "@solana/kit";
 
 import { errorMessage, SimulationError, TransactionError } from "./errors";
-import type { SimulationResult, TransactionRpc } from "./rpc";
+import type { LatestBlockhash, SimulationResult, TransactionRpc } from "./rpc";
 import { startTransactionTrace } from './transaction-diagnostics';
 import { checkSignedTransaction, checkTransactionSignatures } from './signed-transaction';
 import { validateWalletTransactionChanges, type WalletTransactionChanges } from './wallet-transaction-policy';
@@ -66,6 +67,16 @@ export type TransactionReview = {
   walletChanges?: WalletTransactionChanges;
 };
 
+/** Wire size of a legacy transaction paid by `wallet`; the blockhash value does not change it. */
+export function legacyTransactionSize(wallet: Address, instructions: readonly Instruction[]): number {
+  return getTransactionEncoder().encode(compileTransaction(pipe(
+    createTransactionMessage({ version: "legacy" }),
+    message => setTransactionMessageFeePayer(wallet, message),
+    message => setTransactionMessageLifetimeUsingBlockhash({ blockhash: toBlockhash('11111111111111111111111111111111'), lastValidBlockHeight: 0n }, message),
+    message => appendTransactionMessageInstructions(instructions, message),
+  ))).length;
+}
+
 function copyTransaction(transaction: Transaction): Transaction {
   return { ...transaction, ...getTransactionDecoder().decode(getTransactionEncoder().encode(transaction)) };
 }
@@ -106,44 +117,51 @@ async function executeTracedTransaction(options: SafeTransactionOptions, trace: 
   if (instructions.length === 0) throw new TransactionError("Cannot execute an empty transaction");
   const expectedSigners = [wallet, ...additionalSigners.map(signer => signer.address)];
   if (new Set(expectedSigners).size !== expectedSigners.length) throw new TransactionError('Duplicate transaction signer');
-  trace.event('blockhash-start');
-  const blockhash = { ...await rpc.getLatestBlockhash() };
-  trace.event('message-build');
-  const transactionMessage = pipe(
-    createTransactionMessage({ version: "legacy" }),
-    message => setTransactionMessageFeePayer(wallet, message),
-    message => setTransactionMessageLifetimeUsingBlockhash(blockhash, message),
-    message => appendTransactionMessageInstructions(instructions, message),
-  );
+  const compile = (lifetime: LatestBlockhash): Transaction => {
+    const transaction = compileTransaction(pipe(
+      createTransactionMessage({ version: "legacy" }),
+      message => setTransactionMessageFeePayer(wallet, message),
+      message => setTransactionMessageLifetimeUsingBlockhash(lifetime, message),
+      message => appendTransactionMessageInstructions(instructions, message),
+    ));
+    if (Object.keys(transaction.signatures).length !== expectedSigners.length ||
+        expectedSigners.some(signer => !(signer in transaction.signatures))) {
+      throw new TransactionError('Transaction signers differ from the configured wallet and temporary signers');
+    }
+    if (getTransactionEncoder().encode(transaction).length > 1232) {
+      throw new TransactionError("Transaction exceeds Solana's 1232-byte limit; this position is not supported without lookup tables");
+    }
+    return transaction;
+  };
+  const simulate = async (transaction: Transaction, label: string): Promise<SimulationResult> => {
+    await options.beforeSimulation?.(copyTransaction(transaction));
+    let simulation: SimulationResult;
+    try {
+      simulation = await rpc.simulateTransaction(copyTransaction(transaction), options.simulationAccounts);
+    } catch (error) {
+      throw new SimulationError(`${label} simulation RPC request failed: ${errorMessage(error)}`, { cause: error });
+    }
+    if (simulation.error !== null) {
+      trace.programError(simulation.error);
+      const logSuffix = simulation.logs.length === 0 ? "" : `\n${simulation.logs.join("\n")}`;
+      throw new SimulationError(`${label} simulation failed: ${describeRpcValue(simulation.error)}${logSuffix}`);
+    }
+    return simulation;
+  };
 
-  const unsignedTransaction = compileTransaction(transactionMessage);
+  // This lifetime serves simulation and review only. After approval the same instructions
+  // receive a fresh blockhash, so review time does not consume the signing and landing window.
+  trace.event('blockhash-start');
+  let blockhash = { ...await rpc.getLatestBlockhash() };
+  trace.event('message-build');
+  let unsignedTransaction = compile(blockhash);
   trace.messageShape('original', unsignedTransaction);
-  if (Object.keys(unsignedTransaction.signatures).length !== expectedSigners.length ||
-      expectedSigners.some(signer => !(signer in unsignedTransaction.signatures))) {
-    throw new TransactionError('Transaction signers differ from the configured wallet and temporary signers');
-  }
-  if (getTransactionEncoder().encode(unsignedTransaction).length > 1232) {
-    throw new TransactionError("Transaction exceeds Solana's 1232-byte limit; this position is not supported without lookup tables");
-  }
-  let simulation;
   trace.event('simulation-start');
-  await options.beforeSimulation?.(copyTransaction(unsignedTransaction));
-  try {
-    simulation = await rpc.simulateTransaction(copyTransaction(unsignedTransaction), options.simulationAccounts);
-  } catch (error) {
-    throw new SimulationError(`Transaction simulation RPC request failed: ${errorMessage(error)}`, { cause: error });
-  }
-  if (simulation.error !== null) {
-    trace.programError(simulation.error);
-    const logSuffix = simulation.logs.length === 0 ? "" : `\n${simulation.logs.join("\n")}`;
-    throw new SimulationError(
-      `Transaction simulation failed: ${describeRpcValue(simulation.error)}${logSuffix}`,
-    );
-  }
+  const simulation = await simulate(unsignedTransaction, 'Transaction');
   trace.event('simulation-validation');
   await options.validateSimulation?.(simulation);
   trace.event('fee-read');
-  const review: TransactionReview = { wallet, simulation,
+  let review: TransactionReview = { wallet, simulation,
     feeLamports: await rpc.getTransactionFee?.(copyTransaction(unsignedTransaction)) ?? null,
     lastValidBlockHeight: blockhash.lastValidBlockHeight };
   options.onSimulated?.(review);
@@ -157,6 +175,27 @@ async function executeTracedTransaction(options: SafeTransactionOptions, trace: 
   assertActive();
 
   trace.event('review-approved');
+  trace.event('lifetime-refresh');
+  const fresh = { ...await rpc.getLatestBlockhash() };
+  // A lagging RPC node may return an older blockhash; keep whichever lifetime lasts longer.
+  if (fresh.lastValidBlockHeight > blockhash.lastValidBlockHeight) {
+    blockhash = fresh;
+    unsignedTransaction = compile(blockhash);
+    assertActive();
+    // The approved simulation does not cover a new message: repeat every precondition and
+    // postcondition before the wallet sees it. Failure here sends nothing.
+    trace.event('fresh-simulation-start');
+    const freshSimulation = await simulate(unsignedTransaction, 'Fresh-blockhash');
+    trace.event('fresh-simulation-validation');
+    await options.validateSimulation?.(freshSimulation);
+    const feeLamports = await rpc.getTransactionFee?.(copyTransaction(unsignedTransaction)) ?? null;
+    // Only the lifetime changed, so the fee should not; never sign for more than was approved.
+    if (review.feeLamports !== null && (feeLamports === null || feeLamports > review.feeLamports)) {
+      throw new TransactionError('The network fee changed after approval; nothing was sent. Prepare and confirm again');
+    }
+    review = { ...review, simulation: freshSimulation, feeLamports, lastValidBlockHeight: blockhash.lastValidBlockHeight };
+    assertActive();
+  }
   trace.event('pre-sign-height');
   const currentBlockHeight = await rpc.getBlockHeight();
   if (currentBlockHeight > blockhash.lastValidBlockHeight) {

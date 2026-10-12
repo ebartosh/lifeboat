@@ -5,6 +5,7 @@ import {
   blockhash,
   signature,
   getSignatureFromTransaction,
+  getBase58Decoder,
   signTransaction,
   AccountRole,
   type Signature,
@@ -279,6 +280,74 @@ describe("safe transaction execution", () => {
     rpc.blockHeight = 101n;
     await expect(executeWith(rpc, async () => true)).rejects.toThrow(/expired before signing/);
     expect(rpc.sendCalls).toBe(0);
+  });
+
+  describe("blockhash refresh after approval", () => {
+    const lifetime = (fill: number, lastValidBlockHeight: bigint) =>
+      ({ blockhash: blockhash(getBase58Decoder().decode(new Uint8Array(32).fill(fill))), lastValidBlockHeight });
+    class RefreshingRpc extends FakeTransactionRpc {
+      lifetimes = [lifetime(1, 100n), lifetime(2, 250n)];
+      fees: (bigint | null)[] = [5_000n, 5_000n];
+      simulations: SimulationResult[] = [];
+      simulatedMessages: Uint8Array[] = [];
+      private calls = { blockhash: 0, fee: 0, simulation: 0 };
+      override async getLatestBlockhash() {
+        return this.lifetimes[Math.min(this.calls.blockhash++, this.lifetimes.length - 1)]!;
+      }
+      async getTransactionFee() { return this.fees[Math.min(this.calls.fee++, this.fees.length - 1)]!; }
+      override async simulateTransaction(transaction: Transaction): Promise<SimulationResult> {
+        this.simulatedMessages.push(Uint8Array.from(transaction.messageBytes));
+        await super.simulateTransaction(transaction);
+        return this.simulations[this.calls.simulation++] ?? this.simulation;
+      }
+    }
+    async function executeRefreshing(rpc: RefreshingRpc, confirm: () => Promise<boolean> = async () => true) {
+      const signer = await createTestSigner();
+      const signWithWallet = vi.fn(testWalletSigning(signer));
+      const validateSimulation = vi.fn();
+      const result = executeSafeTransaction({ rpc, wallet: signer.address, signWithWallet, validateSimulation,
+        instruction: { programAddress: address("11111111111111111111111111111111") },
+        confirm, pollIntervalMs: 0, sleep: async () => undefined });
+      return { result, signWithWallet, validateSimulation };
+    }
+
+    it("signs a freshly simulated message so review time does not consume its lifetime", async () => {
+      const rpc = new RefreshingRpc();
+      // The review outlasts the provisional lifetime (100) but not the refreshed one (250).
+      const run = await executeRefreshing(rpc, async () => { rpc.blockHeight = 150n; return true; });
+      expect(await run.result).toEqual({ status: "confirmed", signature: rpc.transactionSignature });
+      expect(rpc.simulatedMessages).toHaveLength(2);
+      expect(run.validateSimulation).toHaveBeenCalledTimes(2);
+      expect(rpc.simulatedMessages[1]).not.toEqual(rpc.simulatedMessages[0]);
+      expect(rpc.sentMessage).toEqual(rpc.simulatedMessages[1]);
+    });
+
+    it("sends nothing when the fresh simulation fails after approval", async () => {
+      const rpc = new RefreshingRpc();
+      rpc.simulations = [{ error: null, logs: [] }, { error: { InstructionError: [0, "Custom"] }, logs: [] }];
+      const run = await executeRefreshing(rpc);
+      await expect(run.result).rejects.toThrow(/Fresh-blockhash simulation failed/);
+      expect(run.signWithWallet).not.toHaveBeenCalled();
+      expect(rpc.sendCalls).toBe(0);
+    });
+
+    it("sends nothing when the network fee rises after approval", async () => {
+      const rpc = new RefreshingRpc();
+      rpc.fees = [5_000n, 10_000n];
+      const run = await executeRefreshing(rpc);
+      await expect(run.result).rejects.toThrow(/network fee changed after approval/);
+      expect(run.signWithWallet).not.toHaveBeenCalled();
+      expect(rpc.sendCalls).toBe(0);
+    });
+
+    it("keeps the reviewed lifetime when a lagging RPC returns an older blockhash", async () => {
+      const rpc = new RefreshingRpc();
+      rpc.lifetimes = [lifetime(1, 100n), lifetime(2, 90n)];
+      const run = await executeRefreshing(rpc);
+      await expect(run.result).resolves.toMatchObject({ status: "confirmed" });
+      expect(rpc.simulatedMessages).toHaveLength(1);
+      expect(rpc.sentMessage).toEqual(rpc.simulatedMessages[0]);
+    });
   });
 
   it("reports on-chain failure", async () => {

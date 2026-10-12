@@ -23,7 +23,8 @@ export function captureAccounts(): Map<Address, ChainAccount | null> {
   }));
 }
 // Independent pinned Rust offsets, including explicit zero-copy padding. Not a production encoder.
-export function obligationBytes(wallet: Address, reserve = USDC, deposit = 1_000_000_000n, debt = 100_000_000n): Uint8Array {
+export function obligationBytes(wallet: Address, reserve = USDC, deposit = 1_000_000_000n, debt = 100_000_000n,
+  { borrowReserve = reserve, elevationGroup = 0 }: { borrowReserve?: Address; elevationGroup?: number } = {}): Uint8Array {
   const bytes = new Uint8Array(3344);
   bytes.set(createHash("sha256").update("account:Obligation").digest().subarray(0, 8));
   u64(bytes, 16, SLOT); bytes[25] = 63;
@@ -33,12 +34,13 @@ export function obligationBytes(wallet: Address, reserve = USDC, deposit = 1_000
     u128(bytes, 1192, 1_000n * SF);
   }
   if (debt > 0n) {
-    pubkey(bytes, 1208, reserve); u64(bytes, 1240, SF); u128(bytes, 1296, debt * SF);
+    pubkey(bytes, 1208, borrowReserve); u64(bytes, 1240, SF); u128(bytes, 1296, debt * SF);
     u128(bytes, 1312, 100n * SF); u128(bytes, 1328, 100n * SF);
     u128(bytes, 2208, 100n * SF); u128(bytes, 2224, 100n * SF);
     bytes[2287] = 1;
   }
   u128(bytes, 2240, 800n * SF); u128(bytes, 2256, 900n * SF);
+  bytes[2285] = elevationGroup;
   return bytes;
 }
 export function tokenBytes(wallet: Address, mint: Address, balance: bigint): Uint8Array {

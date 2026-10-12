@@ -1,0 +1,16 @@
+{
+  "id": "orca-whirlpools",
+  "name": "Orca Whirlpools",
+  "network": "mainnet-beta",
+  "actions": [{ "id": "withdraw-all", "label": "Withdraw all", "description": "Remove all liquidity from the selected position, collect fees and rewards, then close the position and burn its NFT." }],
+  "supported": "Single-position NFTs (SPL Token or Token-2022) held by the connected wallet in any token account; pool and reward tokens are ordinary SPL Token or the listed Token-2022 extensions; WSOL stays wrapped",
+  "token2022": {
+    "mintExtensions": ["TransferFeeConfig", "MetadataPointer", "TokenMetadata"],
+    "accountExtensions": ["TransferFeeAmount", "ImmutableOwner"],
+    "extensionFreeMints": true,
+    "unknownExtensions": "rejected",
+    "receipt": "spendable net amount after per-transfer, epoch-specific fees; withheld fees are excluded"
+  },
+  "liquidityMinimums": "token_min_a and token_min_b are 0; see docs/orca-operations.md",
+  "excluded": ["position bundles", "locked (frozen) position NFTs", "position token accounts with another close authority", "all unlisted mint/account extensions", "active or inactive transfer hooks", "native Token-2022 mint", "swaps", "partial withdrawals", "wallet-wide withdrawal"]
+}

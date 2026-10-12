@@ -65,3 +65,38 @@ production decoder or auto-update snapshots to make failures pass.
 
 These fixtures establish compatibility at the captured slot. They do not detect
 later on-chain upgrades; the separate opt-in live integration test remains useful.
+
+## ore-stake accounts
+
+`ore-stake.json` is one unmodified `getMultipleAccounts` response body (one context slot for every account),
+captured from the same public endpoint on 2026-10-08 at 16:15:51 UTC, context slot 454595494:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"getMultipleAccounts","params":[[PROGRAM,STAKE,TREASURY,STAKE_ATA,WALLET_ATA],{"encoding":"base64","commitment":"confirmed"}]}
+```
+
+| Index | Account | Role |
+| --- | --- | --- |
+| 0 | `stakecNP3FpiExZPCgZfqRgumVzi6dNqnfrjwXyTgeH` | ore-stake program (executable) |
+| 1 | `12jrW29HvC2e1sWt9VdeiVHyJsf4pndihiUneurymfpt` | Stake PDA, 120 bytes |
+| 2 | `F3ajpARUkbMnYsrbAmgnsjyp991DVbGYRzfaVXy1Dfvu` | Treasury PDA, 32 bytes |
+| 3 | `D9X3T2mmGctvLTSe3z9n6YvZ2G59mDi52j2ZtFokyvrP` | Stake ORE ATA |
+| 4 | `syAaZaKRQwUwmTU1AHRZFuYV321kPgNZyRh8KotDVSv` | Authority's ORE ATA |
+
+The Stake was found with `getProgramAccounts` filtered to 120-byte accounts. Its authority,
+`EfixMV4qZLx7DRdQf8xADMLe5bsKzRZfumf2SfAkZusH`, is a public staker selected as test data, not a
+project-owned wallet. Expectations were read with Node `Buffer` reads at offsets from the pinned
+`repr(C)` layout and steel 4.0.9's 8-byte discriminator, not with the production parser:
+
+| Field | Byte offset | Captured value |
+| --- | --- | --- |
+| Stake discriminator | 0..8 | `6c00000000000000` |
+| Stake balance | 40 | 7427708297624 |
+| Stake rewards_factor (I80F48 bits) | 88 | 14138660205406 |
+| Stake rewards | 104 | 511369 |
+| Stake lifetime_rewards | 112 | 355700594876 |
+| Treasury discriminator | 0..8 | `6800000000000000` |
+| Treasury rewards_factor (I80F48 bits) | 8 | 14329134405381 |
+| Treasury total_staked | 24 | 27740033973586451 |
+
+Claimable before vesting: `511369 + floor((14329134405381 − 14138660205406) × 7427708297624 / 2^48) = 5026843770`.

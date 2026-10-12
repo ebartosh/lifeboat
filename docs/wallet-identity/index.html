@@ -3,18 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Lifeboat is an experimental Android app for inspecting Solana positions and preparing transactions for wallet confirmation.">
+  <meta name="description" content="Lifeboat is an emergency Android client for Solana positions. Withdraw, repay or claim through an RPC endpoint and your external wallet when protocol websites or backends are unavailable.">
   <meta property="og:title" content="Lifeboat">
-  <meta property="og:description" content="An experimental Android app for Solana positions.">
+  <meta property="og:description" content="An emergency Android client for ORE, Kamino Lending and Meteora DLMM. Read positions from the chain and recover funds through your wallet.">
   <meta property="og:url" content="https://ebartosh.github.io/lifeboat/">
   <link rel="canonical" href="https://ebartosh.github.io/lifeboat/">
   <title>Lifeboat</title>
   <style>
     :root { color-scheme: light; font-family: system-ui, sans-serif; color: #163b73; background: #fff; }
     body { margin: 0; padding: 28px 16px; }
-    main { max-width: 640px; margin: 6vh auto; border: 5px double #163b73; padding: clamp(20px, 5vw, 36px); }
+    main { max-width: 720px; margin: 6vh auto; border: 5px double #163b73; padding: clamp(20px, 5vw, 36px); overflow-wrap: anywhere; }
     h1 { font-size: clamp(32px, 7vw, 46px); line-height: 1.1; margin: 0 0 16px; }
+    h2 { font-size: 1.5em; line-height: 1.25; margin: 32px 0 12px; }
     p { line-height: 1.65; margin: 16px 0; }
+    ul { padding-left: 24px; }
+    li { line-height: 1.65; margin: 12px 0; }
     .status { display: inline-block; padding: 8px 12px; background: #eaf3ff; font-weight: 600; }
     dl { border-top: 1px solid #163b73; padding-top: 20px; margin-top: 28px; }
     dt { font-size: 14px; margin-top: 16px; }
@@ -26,8 +29,36 @@
   <main>
     <h1>Lifeboat</h1>
     <p class="status">Android prototype · Solana mainnet</p>
-    <p>Inspect ORE rewards, Kamino Lending positions and Meteora DLMM positions. Prepare supported operations for review and confirmation in your wallet.</p>
-    <p>This prototype is under device testing. Wallet compatibility is being verified.</p>
+    <p>Lifeboat is an emergency Android client for Solana positions. Withdraw, repay or claim when a protocol's website or backend is unavailable but the Solana blockchain still works.</p>
+    <p>The app reads positions directly from the chain and builds transactions itself. Supported actions need only a working RPC endpoint and your external wallet; they do not depend on protocol websites, APIs or indexers.</p>
+    <section aria-labelledby="actions-title">
+      <h2 id="actions-title">Recover funds from your positions</h2>
+      <ul>
+        <li><strong>ORE:</strong> claim recorded SOL and ORE mining rewards, withdraw available staked ORE, and claim staking rewards while keeping the staked balance. Pending mining SOL that has not been recorded is not settled by Lifeboat.</li>
+        <li><strong>Kamino Lending:</strong> repay debt and withdraw collateral from supported main-market positions, including Multiply and eMode. Repayment uses funds already in your wallet; Lifeboat does not swap collateral or use flash loans to unwind a position.</li>
+        <li><strong>Meteora DLMM:</strong> withdraw all liquidity from a selected supported position, claim its fees and rewards, and close the empty position account. You receive the original tokens; WSOL stays wrapped. Large withdrawals may need several transactions, with saved progress for recovery.</li>
+      </ul>
+    </section>
+    <section aria-labelledby="review-title">
+      <h2 id="review-title">Review and sign on your phone</h2>
+      <p>Lifeboat simulates each transaction and shows the expected amounts and fees before approval. Your external wallet keeps your private keys and signs the transaction; Lifeboat submits it through the RPC endpoint.</p>
+      <p>If a submission result is uncertain, check its saved signature before starting another operation. An interrupted Meteora withdrawal can resume after the pending result is resolved.</p>
+    </section>
+    <section aria-labelledby="requirements-title">
+      <h2 id="requirements-title">What you need</h2>
+      <p>Android 7 or later, an external wallet compatible with Mobile Wallet Adapter, and access to Solana mainnet. The current build uses the public Solana RPC endpoint and needs no API key.</p>
+      <p>This is a prototype under device testing. Support depends on the position, token and wallet; review the amounts, recipient and simulation result before signing. The guides below describe the supported cases and current limits.</p>
+    </section>
+    <section aria-labelledby="docs-title">
+      <h2 id="docs-title">Documentation</h2>
+      <ul>
+        <li><a href="https://github.com/ebartosh/lifeboat/blob/main/docs/README.md">Documentation index</a></li>
+        <li><a href="https://github.com/ebartosh/lifeboat/blob/main/docs/ore-operations.md">ORE rewards and staking</a></li>
+        <li><a href="https://github.com/ebartosh/lifeboat/blob/main/docs/kamino-operations.md">Kamino Lending repayment and withdrawal</a></li>
+        <li><a href="https://github.com/ebartosh/lifeboat/blob/main/docs/meteora-operations.md">Meteora DLMM withdrawal and recovery</a></li>
+        <li><a href="https://github.com/ebartosh/lifeboat/blob/main/docs/wallet-and-rpc.md">Wallets and RPC</a></li>
+      </ul>
+    </section>
     <p><a href="https://github.com/ebartosh/lifeboat">View the source code on GitHub</a></p>
     <dl>
       <dt>Application name</dt><dd>Lifeboat</dd>

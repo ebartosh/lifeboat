@@ -110,6 +110,39 @@ export function decodeTokenMint(mint: Address, account: ChainAccount | null | un
   return {address:mint, program:account.owner, decimals:d[44]!, supply:view(d).getBigUint64(36, true), mintAuthority, freezeAuthority,
     extensions:exts, transferFee, transferHookProgram:hook && key(hook, 32) !== SYSTEM ? key(hook, 32) : null};
 }
+export const TOKEN_METADATA_PROGRAM = address('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+/** Metaplex metadata PDA. Its name and symbol are stored on-chain; only the uri JSON is off-chain. */
+export async function metaplexMetadataAddress(mint: Address) {
+  const encode = (a: Address) => getAddressEncoder().encode(a);
+  return (await getProgramDerivedAddress({programAddress:TOKEN_METADATA_PROGRAM, seeds:['metadata', encode(TOKEN_METADATA_PROGRAM), encode(mint)]}))[0];
+}
+const hiddenCharacter = (c: number) => c < 0x20 || (c >= 0x7f && c <= 0x9f) || (c >= 0x200b && c <= 0x200f)
+  || (c >= 0x2028 && c <= 0x202e) || (c >= 0x2060 && c <= 0x2069) || c === 0xfeff;
+// Reads the Borsh symbol that follows the name. Metaplex pads both with NUL bytes.
+function symbolAfterName(d: Uint8Array, offset: number): string | null {
+  if (offset + 4 > d.length) return null;
+  offset += 4 + view(d).getUint32(offset, true);
+  if (offset + 4 > d.length) return null;
+  const length = view(d).getUint32(offset, true); offset += 4;
+  if (length > 64 || offset + length > d.length) return null;
+  let text: string;
+  // Decodes UTF-8 without a native TextDecoder; invalid sequences throw.
+  try { text = decodeURIComponent(Array.from(d.subarray(offset, offset + length), b => `%${b.toString(16).padStart(2, '0')}`).join('')); }
+  catch { return null; }
+  text = text.replace(/\0+$/, '').trim();
+  // Control, invisible and bidirectional characters could disguise the label.
+  return text && text.length <= 16 && ![...text].some(c => hiddenCharacter(c.codePointAt(0)!)) ? text : null;
+}
+/** Display label only: the Token-2022 TokenMetadata symbol, else the Metaplex symbol. Malformed data yields null and never blocks an operation. */
+export function onChainSymbol(mint: TokenMint, metaplex: ChainAccount | null | undefined): string | null {
+  const extension = mint.extensions.find(e => e.type === 19)?.data;
+  const fromExtension = extension ? symbolAfterName(extension, 64) : null;
+  if (fromExtension) return fromExtension;
+  const d = metaplex?.data;
+  // Metaplex MetadataV1: key 4, update authority, mint, then name and symbol.
+  if (!d || metaplex.owner !== TOKEN_METADATA_PROGRAM || d.length < 65 || d[0] !== 4 || key(d, 33) !== mint.address) return null;
+  return symbolAfterName(d, 65);
+}
 export type TokenAccountState = { program: TokenProgram; mint: Address; authority: Address; amount: bigint;
   initialized: boolean; frozen: boolean; delegate: Address | null; delegatedAmount: bigint;
   closeAuthority: Address | null; nativeReserve: bigint | null; extensions: TokenExtension[]; withheldAmount: bigint };
